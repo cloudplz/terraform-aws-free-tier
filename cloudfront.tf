@@ -10,8 +10,8 @@ data "aws_cloudfront_cache_policy" "caching_optimized" {
 resource "aws_cloudfront_origin_access_control" "assets" {
   for_each = var.features.cloudfront ? { this = {} } : {}
 
-  name                              = "${var.project_name}-oac"
-  description                       = "OAC for ${var.project_name} S3 assets"
+  name                              = "${var.name}-oac"
+  description                       = "OAC for ${var.name} S3 assets"
   origin_access_control_origin_type = "s3"
   signing_behavior                  = "always"
   signing_protocol                  = "sigv4"
@@ -22,7 +22,7 @@ resource "aws_cloudfront_distribution" "assets" {
 
   enabled             = true
   default_root_object = "index.html"
-  comment             = "${var.project_name} assets distribution"
+  comment             = "${var.name} assets distribution"
   price_class         = "PriceClass_100" # US, Canada, Europe — cheaper beyond free tier
 
   origin {
@@ -53,7 +53,7 @@ resource "aws_cloudfront_distribution" "assets" {
   # ⚠️ Do NOT add web_acl_id — WAF is not free
 
   tags = merge(var.tags, {
-    Name = "${var.project_name}-distribution"
+    Name = "${var.name}-distribution"
   })
 }
 

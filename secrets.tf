@@ -4,16 +4,23 @@
 # Each secret is gated behind the same for_each toggle as its source resource.
 # secret_string_wo keeps the password out of Terraform state entirely.
 
+# Auto-generated database password — ephemeral, never stored in Terraform state.
+# Retrieve after deploy: aws secretsmanager get-secret-value --secret-id /<name>/rds
+ephemeral "random_password" "db" {
+  length  = 32
+  special = false # RDS/Aurora special character support is limited
+}
+
 # ─── RDS PostgreSQL secret ────────────────────────────────────────────────────
 
 resource "aws_secretsmanager_secret" "rds" {
   for_each = var.features.rds ? { this = {} } : {}
 
-  name        = "/${var.project_name}/rds"
-  description = "RDS PostgreSQL connection credentials for ${var.project_name}"
+  name        = "/${var.name}/rds"
+  description = "RDS PostgreSQL connection credentials for ${var.name}"
 
   tags = merge(var.tags, {
-    Name = "${var.project_name}-rds-secret"
+    Name = "${var.name}-rds-secret"
   })
 }
 
@@ -26,7 +33,7 @@ resource "aws_secretsmanager_secret_version" "rds" {
     port     = aws_db_instance.postgres["this"].port
     db_name  = aws_db_instance.postgres["this"].db_name
     username = var.db_username
-    password = var.db_password
+    password = ephemeral.random_password.db.result
   })
   secret_string_wo_version = 1
 }
@@ -36,11 +43,11 @@ resource "aws_secretsmanager_secret_version" "rds" {
 resource "aws_secretsmanager_secret" "aurora" {
   for_each = var.features.aurora ? { this = {} } : {}
 
-  name        = "/${var.project_name}/aurora"
-  description = "Aurora PostgreSQL connection credentials for ${var.project_name}"
+  name        = "/${var.name}/aurora"
+  description = "Aurora PostgreSQL connection credentials for ${var.name}"
 
   tags = merge(var.tags, {
-    Name = "${var.project_name}-aurora-secret"
+    Name = "${var.name}-aurora-secret"
   })
 }
 
@@ -54,7 +61,7 @@ resource "aws_secretsmanager_secret_version" "aurora" {
     port            = aws_rds_cluster.aurora["this"].port
     db_name         = aws_rds_cluster.aurora["this"].database_name
     username        = var.db_username
-    password        = var.db_password
+    password        = ephemeral.random_password.db.result
   })
   secret_string_wo_version = 1
 }
@@ -64,11 +71,11 @@ resource "aws_secretsmanager_secret_version" "aurora" {
 resource "aws_secretsmanager_secret" "elasticache" {
   for_each = var.features.elasticache ? { this = {} } : {}
 
-  name        = "/${var.project_name}/elasticache"
-  description = "ElastiCache Valkey connection details for ${var.project_name}"
+  name        = "/${var.name}/elasticache"
+  description = "ElastiCache Valkey connection details for ${var.name}"
 
   tags = merge(var.tags, {
-    Name = "${var.project_name}-elasticache-secret"
+    Name = "${var.name}-elasticache-secret"
   })
 }
 

@@ -1,24 +1,20 @@
-# ─── Required ─────────────────────────────────────────────────────────────────
+# ─── Required (only 1!) ───────────────────────────────────────────────────────
 
-# RDS PostgreSQL / Aurora master password — minimum 8 characters
-# ⚠️ NEVER commit this value to version control. Use terraform.tfvars (gitignored)
-# or the TF_VAR_db_password environment variable instead.
-db_password = "CHANGE_ME_at_least_8_chars"
+# Name prefix applied to all resources. Lowercase alphanumeric or hyphens, ≤20 chars.
+name = "freetier"
 
-# Your public IP in CIDR notation for SSH access to the EC2 instance
-# Find yours: curl -s https://checkip.amazonaws.com | awk '{print $1"/32"}'
-my_ip_cidr = "203.0.113.42/32"
+# ─── Optional — notifications ────────────────────────────────────────────────
 
-# Email address for SNS alerts, Budgets notifications, and CloudWatch alarm actions
-# You will receive a subscription confirmation email — click the link to activate
-notification_email = "you@example.com"
+# notification_email = "you@example.com"  # Email for SNS alerts and Budgets notifications
+                                           # You will receive a confirmation email — click the link to activate
 
-# ─── Optional — project identity ──────────────────────────────────────────────
+# ─── Optional — identity / access ────────────────────────────────────────────
 
-# aws_region   = "us-east-1"    # us-east-1 has the broadest free plan coverage
-# project_name = "freetier"     # Prefix applied to all resource names (≤20 chars)
-# db_username  = "dbadmin"      # RDS / Aurora master username
-# key_name     = null           # EC2 key pair for SSH; null = use SSM Session Manager
+# aws_region  = "us-east-1"    # us-east-1 has the broadest free plan coverage
+# db_username = "dbadmin"      # RDS / Aurora master username (password is auto-generated)
+# key_name    = null           # EC2 key pair for SSH; null = use SSM Session Manager
+# my_ip_cidr  = null           # Your public IP in CIDR for SSH (only needed with key_name)
+                                # Find yours: curl -s https://checkip.amazonaws.com | awk '{print $1"/32"}'
 
 # ─── Optional — networking ───────────────────────────────────────────────────
 
@@ -52,13 +48,13 @@ notification_email = "you@example.com"
 #   bedrock_logging = true
 # }
 
-# Example — database-only stack (no caching, no CDN, no auth):
+# Example — credit-saver stack (Aurora free, skip RDS + cache):
 # features = {
-#   rds             = true
-#   aurora          = false
+#   rds             = false
+#   aurora          = true
 #   elasticache     = false
-#   cloudfront      = false
-#   cognito         = false
-#   step_functions  = false
-#   bedrock_logging = false
+#   cloudfront      = true
+#   cognito         = true
+#   step_functions  = true
+#   bedrock_logging = true
 # }

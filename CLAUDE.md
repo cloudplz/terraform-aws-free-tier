@@ -1,8 +1,8 @@
 # AWS Free Tier Terraform Project
 
 Provisions all major AWS free-tier services using direct `resource` blocks (no terraform-aws-modules wrappers).
-Target: AWS legacy free tier (12-month + always-free services) in `us-east-1`.
-Covers all 5 credit-earning activities for new accounts (+$100 in credits).
+Target: AWS Free Plan (post-July 2025) in `us-east-1` — $200 in credits + 30+ Always Free services.
+Covers all 5 credit-earning activities ($20 each = $100 bonus on top of the $100 sign-up credits).
 
 ## Architecture
 
@@ -86,47 +86,74 @@ Covers all 5 credit-earning activities for new accounts (+$100 in credits).
 
 ## Input Variables
 
+Only 1 variable is required — everything else has safe defaults.
+Database password is auto-generated (ephemeral, never stored in Terraform state).
+
 | Variable            | Default       | Description                                          |
 |---------------------|---------------|------------------------------------------------------|
+| `name`              | *(required)*  | Name prefix for all resources (lowercase, ≤20 chars) |
+| `notification_email`| `null`        | Email for SNS alerts and Budgets notifications       |
 | `aws_region`        | `us-east-1`   | AWS region (us-east-1 has broadest free tier)        |
-| `project_name`      | `freetier`    | Prefix for all resource names and tags               |
-| `db_username`       | `dbadmin`     | RDS PostgreSQL master username                       |
-| `db_password`       | *(required)*  | RDS PostgreSQL master password (**sensitive**)        |
-| `my_ip_cidr`        | *(required)*  | Your public IP in CIDR for SSH (e.g., `1.2.3.4/32`) |
-| `notification_email`| *(required)*  | Email for SNS alerts and Budgets notifications       |
+| `db_username`       | `dbadmin`     | RDS / Aurora master username                         |
+| `my_ip_cidr`        | `null`        | Your public IP for SSH (only needed with `key_name`) |
 | `vpc_cidr`          | `10.0.0.0/16` | VPC CIDR block                                       |
 | `az_count`          | `2`           | Number of availability zones (2-4)                   |
 
 ## Quick Start
 
 ```bash
-cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars — set db_password, my_ip_cidr, notification_email
 terraform init
-terraform plan
-terraform apply
+terraform apply -var='name=freetier'
 ```
 
-After apply, confirm the SNS email subscription (check your inbox).
+Or with email notifications:
+```bash
+terraform apply -var='name=freetier' -var='notification_email=you@example.com'
+# After apply, confirm the SNS email subscription (check your inbox)
+```
+
+Retrieve auto-generated database password:
+```bash
+aws secretsmanager get-secret-value --secret-id /freetier/rds --query SecretString --output text | jq .
+```
 
 ## Cost Guard Rails
 
-| Resource       | Setting                           | Free Tier Limit           | ⚠️ What triggers charges              |
-|----------------|-----------------------------------|---------------------------|---------------------------------------|
-| VPC            | No NAT gateway created            | VPCs are free             | NAT gateway = ~$32/month              |
-| EC2            | `t4g.micro`                       | 750 hrs/month (12-mo)     | Larger instance type                  |
-| EC2            | `volume_size = 30`                | 30 GB EBS                 | Larger volume                         |
-| RDS            | `db.t4g.micro`                    | 750 hrs/month (12-mo)     | Larger instance class                 |
-| RDS            | `allocated_storage = 20`          | 20 GB GP2                 | More storage                          |
-| RDS            | `max_allocated_storage = 20`      | —                         | Higher value enables auto-scaling     |
-| RDS            | `multi_az = false`                | Single-AZ only            | Multi-AZ doubles cost                 |
-| ElastiCache    | `cache.t3.micro`, 1 node          | 750 hrs/month (12-mo)     | Larger type or > 1 node               |
-| S3             | Versioning disabled               | 5 GB storage (12-mo)      | Each version counts toward 5 GB       |
-| S3             | SSE = AES256 (SSE-S3)             | SSE-S3 is free            | KMS encryption incurs KMS charges     |
-| CloudFront     | `PriceClass_100`, no WAF          | 1 TB + 10M req/mo         | WAF = not free                        |
-| Lambda         | `memory_size = 128`               | 400K GB-sec/month         | Higher memory reduces free seconds    |
-| DynamoDB       | `PROVISIONED`, 25 RCU/WCU         | 25 RCU + 25 WCU (always)  | On-demand or > 25 incurs charges      |
-| SQS            | Standard queue (not FIFO)         | 1M requests/month (always)| FIFO burns faster                     |
-| CloudWatch     | 2 alarms, 7d log retention        | 10 alarms, 5 GB (always)  | > 10 alarms or long retention         |
-| Secrets Manager| $0.40/secret/month                | NOT free tier              | Each enabled secret incurs charges    |
-| Budgets        | 2 notifications (no actions)      | 2 action budgets (always) | > 2 action-enabled budgets            |
+### Always Free Services (no credits consumed)
+
+| Resource       | Setting                           | Always Free Limit                    | ⚠️ What triggers charges              |
+|----------------|-----------------------------------|--------------------------------------|---------------------------------------|
+| VPC            | No NAT gateway created            | VPCs are free                        | NAT gateway = ~$32/month              |
+| Lambda         | `memory_size = 128`               | 1M requests + 400K GB-sec/mo         | Higher memory reduces free seconds    |
+| DynamoDB       | `PROVISIONED`, 25 RCU/WCU         | 25 RCU + 25 WCU + 25 GB             | On-demand or > 25 incurs charges      |
+| Aurora         | Serverless v2, ≤ 4 ACUs           | 4 ACUs + 1 GiB storage (March 2026) | > 4 ACUs or > 1 GiB storage          |
+| SQS            | Standard queue (not FIFO)         | 1M requests/month                    | FIFO burns requests faster            |
+| SNS            | Standard topic                    | 1M publishes + 1K email/mo           | High-volume publishing                |
+| CloudFront     | `PriceClass_100`, no WAF          | 1 TB out + 10M requests/mo           | WAF = not free                        |
+| CloudWatch     | 2 alarms, 7d log retention        | 10 alarms + 5 GB logs               | > 10 alarms or long retention         |
+| Step Functions | `STANDARD` type                   | 4,000 state transitions/mo           | EXPRESS type or complex workflows     |
+| EventBridge    | Scheduler, rate(5 min)            | 14M Scheduler invocations/mo         | Rules are a different service         |
+| Cognito        | User Pool, no advanced security   | 10K MAUs (direct/social)             | SAML/OIDC = 50 MAU limit             |
+| Budgets        | 2 notifications (no actions)      | 2 action budgets                     | > 2 action-enabled budgets            |
+| S3             | SSE = AES256 (SSE-S3)             | SSE-S3 is free                       | KMS encryption incurs KMS charges     |
+
+### Credit-Consuming Services (~$39.79/month with defaults)
+
+| Resource       | Setting                           | Rate                                 | Monthly Cost | ⚠️ What increases burn                |
+|----------------|-----------------------------------|--------------------------------------|-------------|---------------------------------------|
+| EC2            | `t4g.micro`                       | $0.0084/hr                           | ~$6.13      | Larger instance type                  |
+| EBS            | `gp3`, 30 GB                      | $0.08/GB-mo                          | ~$2.40      | Larger volume                         |
+| Public IPv4    | 1 address on EC2                  | $0.005/hr                            | ~$3.65      | Additional public IPs                 |
+| RDS            | `db.t4g.micro`, 20 GB gp2         | $0.016/hr + $0.115/GB-mo            | ~$13.98     | Larger class, more storage            |
+| RDS            | `max_allocated_storage = 20`      | —                                    | —           | Higher value enables auto-scaling     |
+| RDS            | `multi_az = false`                | —                                    | —           | Multi-AZ doubles cost                 |
+| ElastiCache    | `cache.t3.micro`, 1 node          | $0.017/hr                            | ~$12.41     | Larger type or > 1 node              |
+| Secrets Manager| Up to 3 secrets (NOT free tier)   | $0.40/secret/mo                      | ~$1.20      | More secrets or API calls             |
+
+### Credit Budget at a Glance
+
+| Scenario                     | Monthly Burn | $200 Lasts | $100 Lasts |
+|------------------------------|-------------|------------|------------|
+| All defaults (RDS + Aurora)  | ~$39.79     | ~5.0 mo    | ~2.5 mo    |
+| Disable RDS after earning $20 credit | ~$25.41 | ~7.9 mo | ~3.9 mo |
+| Disable RDS + ElastiCache    | ~$12.60     | ~15.9 mo   | ~7.9 mo    |

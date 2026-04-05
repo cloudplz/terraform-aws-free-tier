@@ -4,10 +4,14 @@ variable "aws_region" {
   default     = "us-east-1"
 }
 
-variable "project_name" {
+variable "name" {
   description = "Name prefix applied to every resource and used in default_tags. Keep it short (≤20 chars)."
   type        = string
-  default     = "freetier"
+
+  validation {
+    condition     = length(var.name) >= 1 && length(var.name) <= 20 && can(regex("^[a-z][a-z0-9-]*$", var.name))
+    error_message = "name must be 1-20 lowercase alphanumeric characters or hyphens, starting with a letter."
+  }
 }
 
 variable "db_username" {
@@ -16,35 +20,25 @@ variable "db_username" {
   default     = "dbadmin"
 }
 
-variable "db_password" {
-  description = "Master password for RDS PostgreSQL and Aurora. Must be ≥8 characters. Never commit to version control."
-  type        = string
-  sensitive   = true
-  ephemeral   = true
-
-  validation {
-    condition     = length(var.db_password) >= 8
-    error_message = "db_password must be at least 8 characters."
-  }
-}
-
 variable "my_ip_cidr" {
-  description = "Your public IP in CIDR notation (e.g., '203.0.113.42/32') for SSH access to the EC2 instance."
+  description = "Your public IP in CIDR notation (e.g., '203.0.113.42/32') for SSH access to the EC2 instance. Only needed when key_name is set."
   type        = string
+  default     = null
 
   validation {
-    condition     = can(cidrhost(var.my_ip_cidr, 0))
-    error_message = "my_ip_cidr must be a valid CIDR block (e.g., '203.0.113.42/32')."
+    condition     = var.my_ip_cidr == null || can(cidrhost(var.my_ip_cidr, 0))
+    error_message = "my_ip_cidr must be null or a valid CIDR block (e.g., '203.0.113.42/32')."
   }
 }
 
 variable "notification_email" {
-  description = "Email address for SNS subscription, Budgets alerts, and CloudWatch alarm actions."
+  description = "Email for SNS alerts and Budgets notifications. Set to null to skip email notifications."
   type        = string
+  default     = null
 
   validation {
-    condition     = can(regex("^[^@]+@[^@]+\\.[^@]+$", var.notification_email))
-    error_message = "notification_email must be a valid email address."
+    condition     = var.notification_email == null || can(regex("^[^@]+@[^@]+\\.[^@]+$", var.notification_email))
+    error_message = "notification_email must be null or a valid email address."
   }
 }
 

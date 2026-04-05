@@ -5,11 +5,11 @@
 resource "aws_db_subnet_group" "main" {
   for_each = (var.features.rds || var.features.aurora) ? { this = {} } : {}
 
-  name       = "${var.project_name}-db-subnet-group"
+  name       = "${var.name}-db-subnet-group"
   subnet_ids = [for s in aws_subnet.private : s.id]
 
   tags = merge(var.tags, {
-    Name = "${var.project_name}-db-subnet-group"
+    Name = "${var.name}-db-subnet-group"
   })
 }
 
@@ -22,7 +22,7 @@ resource "aws_db_subnet_group" "main" {
 resource "aws_db_instance" "postgres" {
   for_each = var.features.rds ? { this = {} } : {}
 
-  identifier     = "${var.project_name}-postgres"
+  identifier     = "${var.name}-postgres"
   engine         = "postgres"
   engine_version = "17"
   instance_class = var.rds_instance_class
@@ -32,9 +32,9 @@ resource "aws_db_instance" "postgres" {
   storage_type          = "gp2"
   storage_encrypted     = true # Free with default AWS-managed key
 
-  db_name             = "${var.project_name}db"
+  db_name             = "${var.name}db"
   username            = var.db_username
-  password_wo         = var.db_password # Write-only — password is never written to Terraform state
+  password_wo         = ephemeral.random_password.db.result
   password_wo_version = 1
   port                = 5432
 
@@ -59,6 +59,6 @@ resource "aws_db_instance" "postgres" {
   database_insights_mode                = "standard"
 
   tags = merge(var.tags, {
-    Name = "${var.project_name}-postgres"
+    Name = "${var.name}-postgres"
   })
 }

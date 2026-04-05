@@ -1,16 +1,18 @@
 # SNS — always free: 1M publishes/month, 100K HTTP/S deliveries, 1K email deliveries/month
 
 resource "aws_sns_topic" "alerts" {
-  name = "${var.project_name}-alerts"
+  name = "${var.name}-alerts"
 
   tags = merge(var.tags, {
-    Name = "${var.project_name}-alerts"
+    Name = "${var.name}-alerts"
   })
 }
 
-# Email subscription — AWS will send a confirmation email to notification_email.
-# You must click the confirmation link before the subscription is active.
+# Email subscription — AWS sends a confirmation email; click the link to activate.
+# Skipped when notification_email is null.
 resource "aws_sns_topic_subscription" "email" {
+  count = var.notification_email != null ? 1 : 0
+
   topic_arn = aws_sns_topic.alerts.arn
   protocol  = "email"
   endpoint  = var.notification_email

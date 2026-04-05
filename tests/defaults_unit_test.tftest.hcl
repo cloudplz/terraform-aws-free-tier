@@ -12,7 +12,7 @@ mock_provider "aws" {
 mock_provider "archive" {}
 
 variables {
-  db_password        = "validpass123"
+  name               = "test"
   my_ip_cidr         = "203.0.113.42/32"
   notification_email = "test@example.com"
 }
@@ -172,5 +172,20 @@ run "budget_defaults_detect_spend" {
   assert {
     condition     = aws_budgets_budget.zero_spend.limit_amount == "0.01"
     error_message = "Budget limit should be $0.01 for zero-spend detection"
+  }
+}
+
+# ─── Minimum required variables ─────────────────────────────────────────────
+
+run "plans_with_only_required_variables" {
+  command = plan
+
+  variables {
+    my_ip_cidr = null
+  }
+
+  assert {
+    condition     = aws_instance.web.instance_type == "t4g.micro"
+    error_message = "Module should plan successfully with only name provided"
   }
 }

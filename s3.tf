@@ -8,10 +8,10 @@ resource "random_id" "suffix" {
 # ⚠️ Enabling versioning causes each version to count toward the 5 GB limit
 
 resource "aws_s3_bucket" "assets" {
-  bucket = "${var.project_name}-assets-${random_id.suffix.hex}"
+  bucket = "${var.name}-assets-${random_id.suffix.hex}"
 
   tags = merge(var.tags, {
-    Name = "${var.project_name}-assets"
+    Name = "${var.name}-assets"
   })
 }
 

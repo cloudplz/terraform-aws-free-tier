@@ -5,7 +5,7 @@
 resource "aws_cognito_user_pool" "main" {
   for_each = var.features.cognito ? { this = {} } : {}
 
-  name = "${var.project_name}-user-pool"
+  name = "${var.name}-user-pool"
 
   auto_verified_attributes = ["email"]
 
@@ -23,7 +23,7 @@ resource "aws_cognito_user_pool" "main" {
   }
 
   tags = merge(var.tags, {
-    Name = "${var.project_name}-user-pool"
+    Name = "${var.name}-user-pool"
   })
 }
 
@@ -31,7 +31,7 @@ resource "aws_cognito_user_pool" "main" {
 resource "aws_cognito_user_pool_domain" "main" {
   for_each = var.features.cognito ? { this = {} } : {}
 
-  domain       = "${var.project_name}-auth-${random_id.suffix.hex}"
+  domain       = "${var.name}-auth-${random_id.suffix.hex}"
   user_pool_id = aws_cognito_user_pool.main["this"].id
 }
 
@@ -39,7 +39,7 @@ resource "aws_cognito_user_pool_domain" "main" {
 resource "aws_cognito_user_pool_client" "main" {
   for_each = var.features.cognito ? { this = {} } : {}
 
-  name         = "${var.project_name}-app-client"
+  name         = "${var.name}-app-client"
   user_pool_id = aws_cognito_user_pool.main["this"].id
 
   generate_secret               = false # Public client

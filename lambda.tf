@@ -15,8 +15,8 @@ data "archive_file" "lambda_placeholder" {
 # ⚠️ timeout > 10 risks consuming free quota on runaway invocations
 
 resource "aws_lambda_function" "handler" {
-  function_name    = "${var.project_name}-handler"
-  description      = "Placeholder Lambda function for ${var.project_name}"
+  function_name    = "${var.name}-handler"
+  description      = "Placeholder Lambda function for ${var.name}"
   handler          = "index.handler"
   runtime          = "nodejs22.x"
   role             = aws_iam_role.lambda.arn
@@ -27,7 +27,7 @@ resource "aws_lambda_function" "handler" {
   timeout     = 10                   # ⚠️ Higher timeout risks consuming free quota
 
   tags = merge(var.tags, {
-    Name = "${var.project_name}-handler"
+    Name = "${var.name}-handler"
   })
 }
 

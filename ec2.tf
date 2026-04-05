@@ -1,6 +1,7 @@
-# EC2 — free plan: 750 hrs/month of t4g.micro (Graviton2 ARM)
-# ⚠️ Changing instance_type to anything larger will incur charges
-# ⚠️ Root volume > 30 GB exceeds the free plan EBS allowance (30 GB total)
+# EC2 — consumes credits: t4g.micro @ $0.0084/hr (~$6.13/mo)
+# ⚠️ Changing instance_type to anything larger will burn credits faster
+# ⚠️ Root volume > 30 GB increases EBS cost (gp3 @ $0.08/GB-mo)
+# ⚠️ Public IPv4 costs $0.005/hr (~$3.65/mo) — no free tier exemption for new accounts
 
 resource "aws_instance" "web" {
   ami           = data.aws_ssm_parameter.al2023_ami.value
@@ -41,6 +42,6 @@ resource "aws_instance" "web" {
   EOF
 
   tags = merge(var.tags, {
-    Name = "${var.project_name}-web"
+    Name = "${var.name}-web"
   })
 }

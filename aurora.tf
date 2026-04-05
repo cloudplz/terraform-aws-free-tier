@@ -8,13 +8,13 @@
 resource "aws_rds_cluster" "aurora" {
   for_each = var.features.aurora ? { this = {} } : {}
 
-  cluster_identifier         = "${var.project_name}-aurora"
+  cluster_identifier         = "${var.name}-aurora"
   engine                     = "aurora-postgresql"
   engine_mode                = "provisioned" # Required for Serverless v2 (not "serverless")
   engine_version             = "16.6"
   database_name              = "app"
   master_username            = var.db_username
-  master_password_wo         = var.db_password # Write-only — password is never written to Terraform state
+  master_password_wo         = ephemeral.random_password.db.result
   master_password_wo_version = 1
 
   db_subnet_group_name   = aws_db_subnet_group.main["this"].name
@@ -35,14 +35,14 @@ resource "aws_rds_cluster" "aurora" {
   }
 
   tags = merge(var.tags, {
-    Name = "${var.project_name}-aurora"
+    Name = "${var.name}-aurora"
   })
 }
 
 resource "aws_rds_cluster_instance" "aurora" {
   for_each = var.features.aurora ? { this = {} } : {}
 
-  identifier          = "${var.project_name}-aurora-instance"
+  identifier          = "${var.name}-aurora-instance"
   cluster_identifier  = aws_rds_cluster.aurora["this"].id
   instance_class      = "db.serverless"
   engine              = aws_rds_cluster.aurora["this"].engine
@@ -59,6 +59,6 @@ resource "aws_rds_cluster_instance" "aurora" {
   monitoring_interval = 0
 
   tags = merge(var.tags, {
-    Name = "${var.project_name}-aurora-instance"
+    Name = "${var.name}-aurora-instance"
   })
 }

@@ -4,26 +4,26 @@
 
 # Dead Letter Queue — receives messages that fail processing 3 times
 resource "aws_sqs_queue" "dlq" {
-  name = "${var.project_name}-dlq"
+  name = "${var.name}-dlq"
 
   message_retention_seconds = 1209600 # 14 days — max retention for dead letters
   sqs_managed_sse_enabled   = true    # SSE-SQS encryption (free)
 
   tags = merge(var.tags, {
-    Name = "${var.project_name}-dlq"
+    Name = "${var.name}-dlq"
   })
 }
 
 # Main queue with DLQ redrive
 resource "aws_sqs_queue" "main" {
-  name = "${var.project_name}-queue"
+  name = "${var.name}-queue"
 
   visibility_timeout_seconds = 30    # Time a consumer has to process a message
   message_retention_seconds  = 86400 # 24 hours
   sqs_managed_sse_enabled    = true  # SSE-SQS encryption (free)
 
   tags = merge(var.tags, {
-    Name = "${var.project_name}-queue"
+    Name = "${var.name}-queue"
   })
 }
 

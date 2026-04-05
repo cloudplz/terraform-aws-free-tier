@@ -3,9 +3,9 @@
 # ⚠️ REST API (V1) also qualifies for the free tier but HTTP API is recommended
 
 resource "aws_apigatewayv2_api" "main" {
-  name          = "${var.project_name}-api"
+  name          = "${var.name}-api"
   protocol_type = "HTTP"
-  description   = "HTTP API for ${var.project_name}"
+  description   = "HTTP API for ${var.name}"
 
   cors_configuration {
     allow_origins = ["*"]
@@ -15,7 +15,7 @@ resource "aws_apigatewayv2_api" "main" {
   }
 
   tags = merge(var.tags, {
-    Name = "${var.project_name}-api"
+    Name = "${var.name}-api"
   })
 }
 
@@ -25,7 +25,7 @@ resource "aws_apigatewayv2_stage" "default" {
   auto_deploy = true
 
   tags = merge(var.tags, {
-    Name = "${var.project_name}-api-stage"
+    Name = "${var.name}-api-stage"
   })
 }
 

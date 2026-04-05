@@ -2,13 +2,13 @@
 
 # EC2 — SSH restricted to operator IP, HTTP open to the world
 resource "aws_security_group" "ec2" {
-  name        = "${var.project_name}-ec2-sg"
+  name        = "${var.name}-ec2-sg"
   description = "Allow SSH from admin IP, HTTP from anywhere"
   vpc_id      = aws_vpc.main.id
 
-  # SSH — restricted to operator's IP, only when an SSH key pair is configured
+  # SSH — restricted to operator's IP, only when both key pair and IP are configured
   dynamic "ingress" {
-    for_each = var.key_name != null ? [1] : []
+    for_each = var.key_name != null && var.my_ip_cidr != null ? [1] : []
     content {
       description = "SSH from admin IP"
       from_port   = 22
@@ -37,7 +37,7 @@ resource "aws_security_group" "ec2" {
   }
 
   tags = merge(var.tags, {
-    Name = "${var.project_name}-ec2-sg"
+    Name = "${var.name}-ec2-sg"
   })
 }
 
@@ -45,7 +45,7 @@ resource "aws_security_group" "ec2" {
 resource "aws_security_group" "rds" {
   for_each = local.db_enabled ? { this = {} } : {}
 
-  name        = "${var.project_name}-rds-sg"
+  name        = "${var.name}-rds-sg"
   description = "Allow PostgreSQL from EC2 security group only"
   vpc_id      = aws_vpc.main.id
 
@@ -58,7 +58,7 @@ resource "aws_security_group" "rds" {
   }
 
   tags = merge(var.tags, {
-    Name = "${var.project_name}-rds-sg"
+    Name = "${var.name}-rds-sg"
   })
 }
 
@@ -66,7 +66,7 @@ resource "aws_security_group" "rds" {
 resource "aws_security_group" "elasticache" {
   for_each = var.features.elasticache ? { this = {} } : {}
 
-  name        = "${var.project_name}-cache-sg"
+  name        = "${var.name}-cache-sg"
   description = "Allow Valkey from EC2 security group only"
   vpc_id      = aws_vpc.main.id
 
@@ -79,6 +79,6 @@ resource "aws_security_group" "elasticache" {
   }
 
   tags = merge(var.tags, {
-    Name = "${var.project_name}-cache-sg"
+    Name = "${var.name}-cache-sg"
   })
 }

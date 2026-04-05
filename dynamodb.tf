@@ -4,7 +4,7 @@
 # ⚠️ Storing more than 25 GB of data will incur charges
 
 resource "aws_dynamodb_table" "main" {
-  name         = "${var.project_name}-table"
+  name         = "${var.name}-table"
   billing_mode = "PROVISIONED" # ⚠️ PAY_PER_REQUEST (on-demand) is NOT free tier
 
   read_capacity  = 25 # Always-free max — do not exceed
@@ -36,6 +36,6 @@ resource "aws_dynamodb_table" "main" {
   }
 
   tags = merge(var.tags, {
-    Name = "${var.project_name}-table"
+    Name = "${var.name}-table"
   })
 }

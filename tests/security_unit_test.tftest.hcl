@@ -12,7 +12,7 @@ mock_provider "aws" {
 mock_provider "archive" {}
 
 variables {
-  db_password        = "validpass123"
+  name               = "test"
   my_ip_cidr         = "203.0.113.42/32"
   notification_email = "test@example.com"
 }
@@ -47,6 +47,20 @@ run "ec2_no_ssh_without_key" {
   assert {
     condition     = length([for rule in aws_security_group.ec2.ingress : rule if rule.from_port == 22 && rule.to_port == 22]) == 0
     error_message = "EC2 security group should not expose SSH when key_name is null"
+  }
+}
+
+run "ec2_no_ssh_without_ip" {
+  command = plan
+
+  variables {
+    key_name   = "test-key"
+    my_ip_cidr = null
+  }
+
+  assert {
+    condition     = length([for rule in aws_security_group.ec2.ingress : rule if rule.from_port == 22 && rule.to_port == 22]) == 0
+    error_message = "EC2 security group should not expose SSH when my_ip_cidr is null"
   }
 }
 

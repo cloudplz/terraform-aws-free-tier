@@ -6,12 +6,12 @@
 resource "aws_sfn_state_machine" "main" {
   for_each = var.features.step_functions ? { this = {} } : {}
 
-  name     = "${var.project_name}-state-machine"
+  name     = "${var.name}-state-machine"
   role_arn = aws_iam_role.sfn["this"].arn
   type     = "STANDARD" # ⚠️ EXPRESS is NOT free tier
 
   definition = jsonencode({
-    Comment = "Invoke Lambda and succeed — ${var.project_name}"
+    Comment = "Invoke Lambda and succeed — ${var.name}"
     StartAt = "InvokeLambda"
     States = {
       InvokeLambda = {
@@ -31,6 +31,6 @@ resource "aws_sfn_state_machine" "main" {
   })
 
   tags = merge(var.tags, {
-    Name = "${var.project_name}-state-machine"
+    Name = "${var.name}-state-machine"
   })
 }

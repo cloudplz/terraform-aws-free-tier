@@ -4,7 +4,7 @@
 #    NOT aws_cloudwatch_event_rule (EventBridge Rules) — they are different services.
 
 resource "aws_scheduler_schedule" "lambda_ping" {
-  name        = "${var.project_name}-lambda-ping"
+  name        = "${var.name}-lambda-ping"
   description = "Invokes the Lambda handler every 5 minutes"
 
   flexible_time_window {

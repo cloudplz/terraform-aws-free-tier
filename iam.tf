@@ -5,7 +5,7 @@
 # ────────────────────────────────────────────────
 
 resource "aws_iam_role" "ec2" {
-  name = "${var.project_name}-ec2-role"
+  name = "${var.name}-ec2-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -18,8 +18,8 @@ resource "aws_iam_role" "ec2" {
 }
 
 resource "aws_iam_policy" "s3_access" {
-  name        = "${var.project_name}-s3-access"
-  description = "Allow EC2 to read/write objects in the ${var.project_name} assets bucket"
+  name        = "${var.name}-s3-access"
+  description = "Allow EC2 to read/write objects in the ${var.name} assets bucket"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -52,7 +52,7 @@ resource "aws_iam_role_policy_attachment" "ec2_ssm" {
 }
 
 resource "aws_iam_instance_profile" "ec2" {
-  name = "${var.project_name}-ec2-profile"
+  name = "${var.name}-ec2-profile"
   role = aws_iam_role.ec2.name
 }
 
@@ -61,7 +61,7 @@ resource "aws_iam_instance_profile" "ec2" {
 # ────────────────────────────────────────────────
 
 resource "aws_iam_role" "lambda" {
-  name = "${var.project_name}-lambda-role"
+  name = "${var.name}-lambda-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -83,7 +83,7 @@ resource "aws_iam_role_policy_attachment" "lambda_basic" {
 # ────────────────────────────────────────────────
 
 resource "aws_iam_role" "scheduler" {
-  name = "${var.project_name}-scheduler-role"
+  name = "${var.name}-scheduler-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -96,7 +96,7 @@ resource "aws_iam_role" "scheduler" {
 }
 
 resource "aws_iam_policy" "scheduler_invoke_lambda" {
-  name = "${var.project_name}-scheduler-invoke-lambda"
+  name = "${var.name}-scheduler-invoke-lambda"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -120,7 +120,7 @@ resource "aws_iam_role_policy_attachment" "scheduler_lambda" {
 resource "aws_iam_role" "sfn" {
   for_each = var.features.step_functions ? { this = {} } : {}
 
-  name = "${var.project_name}-sfn-role"
+  name = "${var.name}-sfn-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -135,7 +135,7 @@ resource "aws_iam_role" "sfn" {
 resource "aws_iam_policy" "sfn_invoke_lambda" {
   for_each = var.features.step_functions ? { this = {} } : {}
 
-  name = "${var.project_name}-sfn-invoke-lambda"
+  name = "${var.name}-sfn-invoke-lambda"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -161,7 +161,7 @@ resource "aws_iam_role_policy_attachment" "sfn_lambda" {
 resource "aws_iam_role" "bedrock_logging" {
   for_each = var.features.bedrock_logging ? { this = {} } : {}
 
-  name = "${var.project_name}-bedrock-logging-role"
+  name = "${var.name}-bedrock-logging-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -176,7 +176,7 @@ resource "aws_iam_role" "bedrock_logging" {
 resource "aws_iam_policy" "bedrock_logging" {
   for_each = var.features.bedrock_logging ? { this = {} } : {}
 
-  name = "${var.project_name}-bedrock-logging"
+  name = "${var.name}-bedrock-logging"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -187,7 +187,7 @@ resource "aws_iam_policy" "bedrock_logging" {
         "logs:PutLogEvents",
         "logs:DescribeLogStreams",
       ]
-      Resource = "arn:aws:logs:${local.region}:${local.account_id}:log-group:/aws/${var.project_name}/bedrock:*"
+      Resource = "arn:aws:logs:${local.region}:${local.account_id}:log-group:/aws/${var.name}/bedrock:*"
     }]
   })
 }

@@ -12,21 +12,21 @@ mock_provider "aws" {
 mock_provider "archive" {}
 
 variables {
-  db_password        = "validpass123"
+  name               = "test"
   my_ip_cidr         = "203.0.113.42/32"
   notification_email = "test@example.com"
 }
 
-# ─── db_password ──────────────────────────────────────────────────────────────
+# ─── name ────────────────────────────────────────────────────────────────────
 
-run "reject_short_db_password" {
+run "reject_invalid_name_uppercase" {
   command = plan
 
   variables {
-    db_password = "short"
+    name = "MyProject"
   }
 
-  expect_failures = [var.db_password]
+  expect_failures = [var.name]
 }
 
 # ─── my_ip_cidr ──────────────────────────────────────────────────────────────
@@ -63,6 +63,19 @@ run "reject_invalid_email" {
   }
 
   expect_failures = [var.notification_email]
+}
+
+run "accept_null_notification_email" {
+  command = plan
+
+  variables {
+    notification_email = null
+  }
+
+  assert {
+    condition     = aws_budgets_budget.zero_spend.budget_type == "COST"
+    error_message = "Module should plan successfully with notification_email = null"
+  }
 }
 
 # ─── ec2_instance_type ───────────────────────────────────────────────────────

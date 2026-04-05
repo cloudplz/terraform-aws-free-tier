@@ -12,7 +12,7 @@ mock_provider "aws" {
 mock_provider "archive" {}
 
 variables {
-  db_password        = "validpass123"
+  name               = "test"
   my_ip_cidr         = "203.0.113.42/32"
   notification_email = "test@example.com"
 }

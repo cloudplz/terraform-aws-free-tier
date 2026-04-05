@@ -4,7 +4,7 @@
 # ⚠️ More than 2 action-enabled budgets incur charges ($0.10/action/day)
 
 resource "aws_budgets_budget" "zero_spend" {
-  name         = "${var.project_name}-zero-spend"
+  name         = "${var.name}-zero-spend"
   budget_type  = "COST"
   limit_amount = "0.01" # Alert at $0.01 — true zero-spend detection
   limit_unit   = "USD"
@@ -16,7 +16,8 @@ resource "aws_budgets_budget" "zero_spend" {
     threshold                  = 80
     threshold_type             = "PERCENTAGE"
     notification_type          = "ACTUAL"
-    subscriber_email_addresses = [var.notification_email]
+    subscriber_email_addresses = var.notification_email != null ? [var.notification_email] : []
+    subscriber_sns_topic_arns  = var.notification_email == null ? [aws_sns_topic.alerts.arn] : []
   }
 
   # Alert when forecasted to exceed $0.01
@@ -25,6 +26,7 @@ resource "aws_budgets_budget" "zero_spend" {
     threshold                  = 100
     threshold_type             = "PERCENTAGE"
     notification_type          = "FORECASTED"
-    subscriber_email_addresses = [var.notification_email]
+    subscriber_email_addresses = var.notification_email != null ? [var.notification_email] : []
+    subscriber_sns_topic_arns  = var.notification_email == null ? [aws_sns_topic.alerts.arn] : []
   }
 }
