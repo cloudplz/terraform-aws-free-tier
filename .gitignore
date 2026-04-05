@@ -9,6 +9,7 @@ override.tf.json
 *_override.tf
 *_override.tf.json
 # .terraform.lock.hcl — intentionally tracked for reproducible builds
+examples/**/.terraform.lock.hcl
 
 # Lambda build artifacts
 **/.build/
