@@ -1,116 +1,11 @@
-# terraform-aws-free-tier
+<!-- BEGIN_TF_DOCS -->
+# AWS Free Tier Terraform
 
-Provisions all major AWS services covered by the AWS Free Plan using direct `resource`
-blocks (no terraform-aws-modules wrappers). Designed for new AWS accounts to maximise
-the $200 credit window and then transition to always-free tiers.
+Provisions all major AWS free-tier services using direct `resource` blocks (no module wrappers).
+Targets the AWS legacy free tier (12-month + always-free services) in `us-east-1` and covers all
+5 credit-earning activities for new accounts (+$100 in credits).
 
-## AWS Free Plan — July 2025 model
-
-New accounts receive:
-
-| Credit | Amount | Validity |
-|---|---|---|
-| Sign-up credits | $100 | 6 months (Free Plan) or 12 months (Paid Plan) |
-| Onboarding bonus | Up to $100 more (5 × $20) | Same window as sign-up credits |
-| **Total** | **Up to $200** | — |
-
-Always-free services (Lambda, DynamoDB, SQS, SNS, Cognito, CloudWatch basic) remain
-free indefinitely regardless of credit expiry.
-
-## Architecture
-
-```
-                    ┌──────────────────────── AWS Account (us-east-1) ───────────────────────────┐
-                    │                                                                              │
-                    │  ┌──────────────────────── VPC 10.0.0.0/16 ──────────────────────────────┐  │
-                    │  │                                                                        │  │
-                    │  │  ┌── Public Subnet ─┐  ┌── Public Subnet ─┐                          │  │
-                    │  │  │  10.0.1.0/24     │  │  10.0.2.0/24     │                          │  │
-                    │  │  │  AZ-a            │  │  AZ-b            │                          │  │
-  SSH ────────────► │  │  │ ┌─────────────┐  │  │                  │                          │  │
-  HTTP ───────────► │  │  │ │ EC2 t4g     │  │  │                  │                          │  │
-  HTTPS ──────────► │  │  │ │ nginx/psql  │  │  │                  │                          │  │
-                    │  │  │ │ 30GB gp3    │  │  │                  │                          │  │
-                    │  │  │ └──────┬──────┘  │  │                  │                          │  │
-                    │  │  └────────┼─────────┘  └──────────────────┘                          │  │
-                    │  │          │ :5432 + :6379                                              │  │
-                    │  │  ┌── Private Subnet ┐  ┌── Private Subnet ─┐                         │  │
-                    │  │  │  10.0.101.0/24   │  │  10.0.102.0/24    │                         │  │
-                    │  │  │ ┌─────────────┐  │  │                   │                         │  │
-                    │  │  │ │ RDS Postgres│  │  │                   │                         │  │
-                    │  │  │ │ db.t4g.micro│  │  │                   │                         │  │
-                    │  │  │ │ 20GB gp2    │  │  │                   │                         │  │
-                    │  │  │ ├─────────────┤  │  │                   │                         │  │
-                    │  │  │ │ Aurora PG   │  │  │                   │                         │  │
-                    │  │  │ │ Serverless  │  │  │                   │                         │  │
-                    │  │  │ │ v2 (0.5–4   │  │  │                   │                         │  │
-                    │  │  │ │ ACUs)       │  │  │                   │                         │  │
-                    │  │  │ ├─────────────┤  │  │                   │                         │  │
-                    │  │  │ │ ElastiCache │  │  │                   │                         │  │
-                    │  │  │ │ Valkey 8.0  │  │  │                   │                         │  │
-                    │  │  │ │ t3.micro    │  │  │                   │                         │  │
-                    │  │  │ └─────────────┘  │  │                   │                         │  │
-                    │  │  └──────────────────┘  └───────────────────┘                         │  │
-                    │  │              NO NAT GATEWAY (saves ~$32/month)                       │  │
-                    │  └────────────────────────────────────────────────────────────────────── ┘  │
-                    │                                                                              │
-                    │  ┌──────────┐  ┌──────────────────┐  ┌───────────────────────────────────┐ │
-                    │  │ S3 Bucket│  │ CloudFront (OAC) │  │ DynamoDB                          │ │
-                    │  │ 5GB free │  │ 1TB + 10M req/mo │  │ 25 RCU/WCU PROVISIONED            │ │
-                    │  │ AES256   │  │ PriceClass_100   │  │ pk(S) + sk(S) + TTL               │ │
-                    │  └──────────┘  └──────────────────┘  └───────────────────────────────────┘ │
-                    │                                                                              │
-                    │  ┌──────────────────────────────────────────────────────────────────────┐   │
-                    │  │ Lambda (Node 22.x, 128MB)                                            │   │
-                    │  │  ├── Function URL (public HTTPS — credit activity)                  │   │
-                    │  │  ├── API Gateway HTTP API → Lambda                                  │   │
-                    │  │  ├── EventBridge Scheduler → Lambda (rate: 5min)                    │   │
-                    │  │  └── Step Functions Standard Workflow → Lambda → Succeed            │   │
-                    │  └──────────────────────────────────────────────────────────────────────┘   │
-                    │                                                                              │
-                    │  ┌────────────────────┐  ┌─────────────────────────────────────────────┐   │
-                    │  │ SQS Queue + DLQ    │  │ SNS Topic + email subscription              │   │
-                    │  │ 1M req/mo          │  │ ← CloudWatch alarms wire here               │   │
-                    │  │ maxReceive = 3     │  │ ← Budgets alerts wire here                  │   │
-                    │  └────────────────────┘  └─────────────────────────────────────────────┘   │
-                    │                                                                              │
-                    │  ┌─────────────────────────┐  ┌──────────────────────────────────────────┐ │
-                    │  │ Cognito User Pool        │  │ CloudWatch                               │ │
-                    │  │ 10K MAUs (always free)   │  │  Log groups: app, lambda, bedrock (7d)  │ │
-                    │  │ + hosted domain          │  │  Alarms: EC2 CPU + RDS storage → SNS    │ │
-                    │  └─────────────────────────┘  └──────────────────────────────────────────┘ │
-                    │                                                                              │
-                    │  ┌──────────────────┐  ┌─────────────────────────────────────────────────┐ │
-                    │  │ Budgets (free)   │  │ Bedrock logging config                          │ │
-                    │  │ zero-spend alert │  │  (inference NOT free — enable in console)       │ │
-                    │  └──────────────────┘  └─────────────────────────────────────────────────┘ │
-                    │                                                                              │
-                    │  ┌──────────────────────────────────────────────────────────────────────┐   │
-                    │  │ Secrets Manager: /rds  /aurora  /elasticache  (JSON secrets)         │   │
-                    │  └──────────────────────────────────────────────────────────────────────┘   │
-                    │                                                                              │
-                    │  ┌──────────────────────────────────────────────────────────────────────┐   │
-                    │  │ IAM: EC2 role + Lambda role + Scheduler role + SFN role              │   │
-                    │  │      Bedrock logging role + S3 access policy + instance profile      │   │
-                    │  └──────────────────────────────────────────────────────────────────────┘   │
-                    └──────────────────────────────────────────────────────────────────────────────┘
-```
-
-## Usage
-
-```hcl
-module "free_tier" {
-  source  = "cloudplz/aws-free-tier/aws"
-  version = "~> 1.0"
-
-  # Required
-  db_password        = var.db_password        # ephemeral — not stored in state
-  my_ip_cidr         = "203.0.113.42/32"
-  notification_email = "you@example.com"
-}
-```
-
-After apply, confirm the SNS email subscription (check your inbox).
+## Quick Start
 
 ```bash
 cp terraform.tfvars.example terraform.tfvars
@@ -120,152 +15,157 @@ terraform plan
 terraform apply
 ```
 
-## Feature Toggles
+After apply, confirm the SNS email subscription (check your inbox).
 
-Core services (VPC, EC2, Lambda, S3, DynamoDB, SQS, SNS, IAM, CloudWatch, Budgets)
-are always provisioned. Optional services can be disabled:
+## Architecture
 
-```hcl
-module "free_tier" {
-  source  = "cloudplz/aws-free-tier/aws"
-  version = "~> 1.0"
-
-  db_password        = var.db_password
-  my_ip_cidr         = "203.0.113.42/32"
-  notification_email = "you@example.com"
-
-  # Disable optional services not needed for this deployment
-  features = {
-    rds             = true
-    aurora          = false   # Skip Aurora Serverless v2
-    elasticache     = false   # Skip Valkey cache (requires rds or aurora when true)
-    cloudfront      = true
-    cognito         = false   # Skip auth
-    step_functions  = true
-    bedrock_logging = false   # Skip Bedrock logging infra
-  }
-}
-```
-
-**Constraint:** `features.elasticache = true` requires either `features.rds = true` or
-`features.aurora = true` (the DB subnet group is shared). A validation error will be
-raised if this constraint is violated.
-
-## Secrets
-
-When a data tier is enabled, connection credentials are written to Secrets Manager
-as JSON objects. All secrets use the AWS-managed KMS key (no customer-managed key).
-
-| Path | Enabled when | JSON fields |
-|---|---|---|
-| `/${project_name}/rds` | `features.rds = true` | `endpoint`, `port`, `db_name`, `username`, `password` |
-| `/${project_name}/aurora` | `features.aurora = true` | `endpoint`, `reader_endpoint`, `port`, `db_name`, `username`, `password` |
-| `/${project_name}/elasticache` | `features.elasticache = true` | `endpoint`, `port`, `engine` |
-
-**Cost after credits:** $0.40 per secret per month × 3 secrets = **$1.20/month**.
-
-Retrieve a secret at runtime:
-
-```bash
-aws secretsmanager get-secret-value \
-  --secret-id /freetier/rds \
-  --query SecretString \
-  --output text | jq .
-```
-
-## Free Tier Cost Guard Rails
-
-| Resource | Setting | Free Plan Coverage | What triggers charges |
-|---|---|---|---|
-| VPC | No NAT gateway | VPCs are free | NAT gateway ≈ $32/month |
-| EC2 | `t4g.micro` | 750 hrs/month (credits window) | Larger instance type |
-| EC2 | `volume_size = 30` | 30 GB EBS | Larger volume |
-| RDS | `db.t4g.micro` | 750 hrs/month (credits window) | Larger instance class |
-| RDS | `allocated_storage = 20` | 20 GB GP2 | More storage |
-| RDS | `max_allocated_storage = 20` | — | Higher value enables auto-scaling |
-| RDS | `multi_az = false` | Single-AZ only | Multi-AZ doubles cost |
-| Aurora | Serverless v2, 0.5–4 ACUs | 4 ACUs / 1 GiB (credits window) | `aurora_max_capacity > 4.0` |
-| Aurora | `database_insights_mode = "standard"` | Free, 7-day retention | `"advanced"` costs $0.003125/ACU-hr |
-| RDS | `database_insights_mode = "standard"` | Free, 7-day retention | `"advanced"` costs $0.0125/vCPU-hr |
-| ElastiCache | Valkey 8.0, `cache.t3.micro`, 1 node | 750 hrs/month (credits window) | `cache.t4g.micro` is NOT free-plan eligible |
-| S3 | Versioning disabled | 5 GB storage (credits window) | Each version counts toward 5 GB |
-| S3 | SSE = AES256 (SSE-S3) | SSE-S3 is free | KMS encryption incurs KMS charges |
-| CloudFront | `PriceClass_100`, no WAF | 1 TB + 10M req/mo (always) | WAF is not free |
-| Lambda | `memory_size = 128` | 400K GB-sec/month (always) | Higher memory reduces free seconds |
-| DynamoDB | `PROVISIONED`, 25 RCU/WCU | 25 RCU + 25 WCU (always) | On-demand or > 25 incurs charges |
-| SQS | Standard queue (not FIFO) | 1M requests/month (always) | FIFO burns faster |
-| CloudWatch | 2 alarms, `log_retention_days = 7` | 10 alarms, 5 GB (always) | > 10 alarms or long retention |
-| Budgets | 2 notifications (no actions) | 2 action budgets (always) | > 2 action-enabled budgets |
-| Secrets Manager | 3 secrets, AWS-managed KMS | — | $0.40/secret/month = $1.20/month after credits |
-
-## Credit-Earning Activities
-
-Complete all 5 to earn an extra $100 in credits ($20 each).
-
-| Service | What Terraform Provisions | Console Step Required? |
-|---|---|---|
-| EC2 | `aws_instance.web` (t4g.micro) | None — just run `terraform apply` |
-| RDS | `aws_db_instance.postgres` (db.t4g.micro) | None — just run `terraform apply` |
-| Lambda | `aws_lambda_function_url.handler` | None — Function URL is the trigger |
-| Bedrock | `aws_bedrock_model_invocation_logging_configuration` | Enable model access + submit 1 prompt in Playground |
-| Budgets | `aws_budgets_budget.zero_spend` | None — just run `terraform apply` |
+See [CLAUDE.md](CLAUDE.md) for the full architecture diagram and cost guardrails.
 
 ## Requirements
 
 | Name | Version |
-|---|---|
-| terraform | `~> 1.11` |
-| aws | `~> 6.0` |
-| random | `~> 3.0` |
-| archive | `~> 2.4` |
+|------|---------|
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | ~> 1.11 |
+| <a name="requirement_archive"></a> [archive](#requirement\_archive) | ~> 2.4 |
+| <a name="requirement_aws"></a> [aws](#requirement\_aws) | ~> 6.0 |
+| <a name="requirement_random"></a> [random](#requirement\_random) | ~> 3.0 |
+
+## Providers
+
+| Name | Version |
+|------|---------|
+| <a name="provider_archive"></a> [archive](#provider\_archive) | 2.7.1 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.39.0 |
+| <a name="provider_random"></a> [random](#provider\_random) | 3.8.1 |
+
+## Resources
+
+| Name | Type |
+|------|------|
+| [aws_apigatewayv2_api.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/apigatewayv2_api) | resource |
+| [aws_apigatewayv2_integration.lambda](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/apigatewayv2_integration) | resource |
+| [aws_apigatewayv2_route.default](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/apigatewayv2_route) | resource |
+| [aws_apigatewayv2_stage.default](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/apigatewayv2_stage) | resource |
+| [aws_bedrock_model_invocation_logging_configuration.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/bedrock_model_invocation_logging_configuration) | resource |
+| [aws_budgets_budget.zero_spend](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/budgets_budget) | resource |
+| [aws_cloudfront_distribution.assets](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudfront_distribution) | resource |
+| [aws_cloudfront_origin_access_control.assets](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudfront_origin_access_control) | resource |
+| [aws_cloudwatch_log_group.app](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_log_group) | resource |
+| [aws_cloudwatch_log_group.bedrock](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_log_group) | resource |
+| [aws_cloudwatch_log_group.lambda](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_log_group) | resource |
+| [aws_cloudwatch_metric_alarm.ec2_cpu_high](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
+| [aws_cloudwatch_metric_alarm.rds_low_storage](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
+| [aws_cognito_user_pool.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cognito_user_pool) | resource |
+| [aws_cognito_user_pool_client.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cognito_user_pool_client) | resource |
+| [aws_cognito_user_pool_domain.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cognito_user_pool_domain) | resource |
+| [aws_db_instance.postgres](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_instance) | resource |
+| [aws_db_subnet_group.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_subnet_group) | resource |
+| [aws_dynamodb_table.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/dynamodb_table) | resource |
+| [aws_elasticache_cluster.valkey](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/elasticache_cluster) | resource |
+| [aws_elasticache_subnet_group.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/elasticache_subnet_group) | resource |
+| [aws_iam_instance_profile.ec2](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_instance_profile) | resource |
+| [aws_iam_policy.bedrock_logging](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy) | resource |
+| [aws_iam_policy.s3_access](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy) | resource |
+| [aws_iam_policy.scheduler_invoke_lambda](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy) | resource |
+| [aws_iam_policy.sfn_invoke_lambda](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy) | resource |
+| [aws_iam_role.bedrock_logging](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
+| [aws_iam_role.ec2](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
+| [aws_iam_role.lambda](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
+| [aws_iam_role.scheduler](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
+| [aws_iam_role.sfn](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
+| [aws_iam_role_policy_attachment.bedrock_logging](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [aws_iam_role_policy_attachment.ec2_s3](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [aws_iam_role_policy_attachment.ec2_ssm](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [aws_iam_role_policy_attachment.lambda_basic](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [aws_iam_role_policy_attachment.scheduler_lambda](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [aws_iam_role_policy_attachment.sfn_lambda](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [aws_instance.web](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/instance) | resource |
+| [aws_internet_gateway.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/internet_gateway) | resource |
+| [aws_lambda_function.handler](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_function) | resource |
+| [aws_lambda_function_url.handler](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_function_url) | resource |
+| [aws_lambda_permission.api_gateway](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_permission) | resource |
+| [aws_lambda_permission.function_url_public](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_permission) | resource |
+| [aws_rds_cluster.aurora](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/rds_cluster) | resource |
+| [aws_rds_cluster_instance.aurora](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/rds_cluster_instance) | resource |
+| [aws_route.public_internet](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route) | resource |
+| [aws_route_table.public](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table) | resource |
+| [aws_route_table_association.public](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table_association) | resource |
+| [aws_s3_bucket.assets](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket) | resource |
+| [aws_s3_bucket_policy.cloudfront_access](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_policy) | resource |
+| [aws_s3_bucket_public_access_block.assets](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_public_access_block) | resource |
+| [aws_s3_bucket_server_side_encryption_configuration.assets](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_server_side_encryption_configuration) | resource |
+| [aws_s3_bucket_versioning.assets](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_versioning) | resource |
+| [aws_scheduler_schedule.lambda_ping](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/scheduler_schedule) | resource |
+| [aws_secretsmanager_secret.aurora](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret) | resource |
+| [aws_secretsmanager_secret.elasticache](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret) | resource |
+| [aws_secretsmanager_secret.rds](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret) | resource |
+| [aws_secretsmanager_secret_version.aurora](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret_version) | resource |
+| [aws_secretsmanager_secret_version.elasticache](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret_version) | resource |
+| [aws_secretsmanager_secret_version.rds](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret_version) | resource |
+| [aws_security_group.ec2](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group) | resource |
+| [aws_security_group.elasticache](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group) | resource |
+| [aws_security_group.rds](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group) | resource |
+| [aws_sfn_state_machine.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sfn_state_machine) | resource |
+| [aws_sns_topic.alerts](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sns_topic) | resource |
+| [aws_sns_topic_subscription.email](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sns_topic_subscription) | resource |
+| [aws_sqs_queue.dlq](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue) | resource |
+| [aws_sqs_queue.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue) | resource |
+| [aws_sqs_queue_redrive_policy.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue_redrive_policy) | resource |
+| [aws_subnet.private](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/subnet) | resource |
+| [aws_subnet.public](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/subnet) | resource |
+| [aws_vpc.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc) | resource |
+| [random_id.suffix](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/id) | resource |
 
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|---|---|---|---|---|
-| `db_password` | Master password for RDS and Aurora. ≥8 chars. Ephemeral — not stored in state. | `string` | — | yes |
-| `my_ip_cidr` | Your public IP in CIDR for SSH (e.g., `1.2.3.4/32`). | `string` | — | yes |
-| `notification_email` | Email for SNS, Budgets, and CloudWatch alerts. | `string` | — | yes |
-| `aws_region` | AWS region. | `string` | `"us-east-1"` | no |
-| `project_name` | Name prefix for all resources (≤20 chars). | `string` | `"freetier"` | no |
-| `db_username` | Master username for RDS and Aurora. | `string` | `"dbadmin"` | no |
-| `key_name` | EC2 key pair name for SSH. `null` = use SSM. | `string` | `null` | no |
-| `ec2_instance_type` | EC2 instance type (t-family only). | `string` | `"t4g.micro"` | no |
-| `ec2_volume_size_gb` | Root EBS volume size in GB (`<= 30`). | `number` | `30` | no |
-| `rds_instance_class` | RDS instance class (`db.t3.micro` or `db.t4g.micro`). | `string` | `"db.t4g.micro"` | no |
-| `rds_allocated_storage` | RDS storage in GB (`<= 20`). | `number` | `20` | no |
-| `aurora_min_capacity` | Aurora Serverless v2 min ACUs (`>= 0.5`). | `number` | `0.5` | no |
-| `aurora_max_capacity` | Aurora Serverless v2 max ACUs (`<= 4.0`). | `number` | `4.0` | no |
-| `lambda_memory_mb` | Lambda memory in MB (`<= 128`). | `number` | `128` | no |
-| `elasticache_node_type` | ElastiCache node type (must be `cache.t3.micro`). | `string` | `"cache.t3.micro"` | no |
-| `log_retention_days` | CloudWatch log retention in days (valid CW value). | `number` | `7` | no |
-| `tags` | Additional tags merged onto all resources. | `map(string)` | `{}` | no |
-| `features` | Feature toggles for optional services (see Feature Toggles section). | `object` | all `true` | no |
+|------|-------------|------|---------|:--------:|
+| <a name="input_db_password"></a> [db\_password](#input\_db\_password) | Master password for RDS PostgreSQL and Aurora. Must be ≥8 characters. Never commit to version control. | `string` | n/a | yes |
+| <a name="input_my_ip_cidr"></a> [my\_ip\_cidr](#input\_my\_ip\_cidr) | Your public IP in CIDR notation (e.g., '203.0.113.42/32') for SSH access to the EC2 instance. | `string` | n/a | yes |
+| <a name="input_notification_email"></a> [notification\_email](#input\_notification\_email) | Email address for SNS subscription, Budgets alerts, and CloudWatch alarm actions. | `string` | n/a | yes |
+| <a name="input_aurora_max_capacity"></a> [aurora\_max\_capacity](#input\_aurora\_max\_capacity) | Aurora Serverless v2 maximum ACU capacity. Free plan cap is 4 ACUs — do not exceed. | `number` | `4` | no |
+| <a name="input_aurora_min_capacity"></a> [aurora\_min\_capacity](#input\_aurora\_min\_capacity) | Aurora Serverless v2 minimum ACU capacity. Must be >= 0.5 (platform minimum). | `number` | `0.5` | no |
+| <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS region to deploy all resources into. us-east-1 has the broadest free plan coverage. | `string` | `"us-east-1"` | no |
+| <a name="input_az_count"></a> [az\_count](#input\_az\_count) | Number of availability zones for subnet placement (2 is sufficient for most free-tier workloads). | `number` | `2` | no |
+| <a name="input_db_username"></a> [db\_username](#input\_db\_username) | Master username for RDS PostgreSQL and Aurora. Avoid reserved words like 'admin' or 'postgres'. | `string` | `"dbadmin"` | no |
+| <a name="input_ec2_instance_type"></a> [ec2\_instance\_type](#input\_ec2\_instance\_type) | EC2 instance type. Must be a t-family type to stay within the free plan. | `string` | `"t4g.micro"` | no |
+| <a name="input_ec2_volume_size_gb"></a> [ec2\_volume\_size\_gb](#input\_ec2\_volume\_size\_gb) | Root EBS volume size in GB. Free plan covers up to 30 GB total EBS storage. | `number` | `30` | no |
+| <a name="input_elasticache_node_type"></a> [elasticache\_node\_type](#input\_elasticache\_node\_type) | ElastiCache node type. Must be cache.t3.micro — the only free-plan eligible ElastiCache node type. | `string` | `"cache.t3.micro"` | no |
+| <a name="input_features"></a> [features](#input\_features) | Toggle optional AWS services on or off. Omit entirely to enable all defaults.<br/>Core services (VPC, EC2, Lambda, S3, DynamoDB, SQS, SNS, IAM, CloudWatch,<br/>Budgets) are always created and cannot be disabled. | <pre>object({<br/>    rds             = optional(bool, true)<br/>    aurora          = optional(bool, true)<br/>    elasticache     = optional(bool, true)<br/>    cloudfront      = optional(bool, true)<br/>    cognito         = optional(bool, true)<br/>    step_functions  = optional(bool, true)<br/>    bedrock_logging = optional(bool, true)<br/>  })</pre> | `{}` | no |
+| <a name="input_key_name"></a> [key\_name](#input\_key\_name) | EC2 key pair name for SSH access. Set to null to disable SSH (use SSM Session Manager instead). | `string` | `null` | no |
+| <a name="input_lambda_memory_mb"></a> [lambda\_memory\_mb](#input\_lambda\_memory\_mb) | Lambda function memory in MB. 128 MB maximizes free tier GB-seconds (400K GB-sec/month). | `number` | `128` | no |
+| <a name="input_log_retention_days"></a> [log\_retention\_days](#input\_log\_retention\_days) | CloudWatch log retention in days. Must be a valid CloudWatch retention period value. | `number` | `7` | no |
+| <a name="input_project_name"></a> [project\_name](#input\_project\_name) | Name prefix applied to every resource and used in default\_tags. Keep it short (≤20 chars). | `string` | `"freetier"` | no |
+| <a name="input_rds_allocated_storage"></a> [rds\_allocated\_storage](#input\_rds\_allocated\_storage) | RDS allocated storage in GB. Free plan covers up to 20 GB. | `number` | `20` | no |
+| <a name="input_rds_instance_class"></a> [rds\_instance\_class](#input\_rds\_instance\_class) | RDS instance class. Must be db.t3.micro or db.t4g.micro for free plan eligibility. | `string` | `"db.t4g.micro"` | no |
+| <a name="input_tags"></a> [tags](#input\_tags) | Additional tags merged onto all resources. | `map(string)` | `{}` | no |
+| <a name="input_vpc_cidr"></a> [vpc\_cidr](#input\_vpc\_cidr) | CIDR block for the VPC. Default /16 provides room for 256 /24 subnets. | `string` | `"10.0.0.0/16"` | no |
 
 ## Outputs
 
 | Name | Description |
-|---|---|
-| `ec2_public_ip` | Public IP address of the EC2 instance |
-| `ec2_public_dns` | Public DNS hostname of the EC2 instance |
-| `rds_endpoint` | RDS PostgreSQL endpoint (host:port), or `null` |
-| `rds_db_name` | RDS database name, or `null` |
-| `rds_secret_arn` | ARN of `/${project_name}/rds` secret, or `null` |
-| `aurora_endpoint` | Aurora cluster writer endpoint, or `null` |
-| `aurora_reader_endpoint` | Aurora cluster reader endpoint, or `null` |
-| `aurora_secret_arn` | ARN of `/${project_name}/aurora` secret, or `null` |
-| `elasticache_endpoint` | ElastiCache Valkey endpoint (host:port), or `null` |
-| `elasticache_secret_arn` | ARN of `/${project_name}/elasticache` secret, or `null` |
-| `valkey_engine_version` | Valkey engine version deployed, or `null` |
-| `s3_bucket_name` | Name of the S3 assets bucket |
-| `cloudfront_domain` | CloudFront distribution domain name, or `null` |
-| `dynamodb_table_name` | Name of the DynamoDB table |
-| `lambda_function_name` | Name of the Lambda function |
-| `lambda_function_url` | Lambda Function URL (public HTTPS endpoint) |
-| `api_gateway_url` | API Gateway HTTP API invoke URL |
-| `sqs_queue_url` | URL of the SQS main queue |
-| `sns_topic_arn` | ARN of the SNS alerts topic |
-| `step_functions_arn` | ARN of the Step Functions state machine, or `null` |
-| `cognito_user_pool_id` | ID of the Cognito User Pool, or `null` |
-| `cognito_client_id` | ID of the Cognito App Client, or `null` |
-| `cognito_domain` | Cognito hosted domain URL, or `null` |
+|------|-------------|
+| <a name="output_api_gateway_url"></a> [api\_gateway\_url](#output\_api\_gateway\_url) | API Gateway HTTP API invoke URL |
+| <a name="output_aurora_endpoint"></a> [aurora\_endpoint](#output\_aurora\_endpoint) | Aurora PostgreSQL cluster writer endpoint, or null when features.aurora is false |
+| <a name="output_aurora_reader_endpoint"></a> [aurora\_reader\_endpoint](#output\_aurora\_reader\_endpoint) | Aurora PostgreSQL cluster reader endpoint, or null when features.aurora is false |
+| <a name="output_aurora_secret_arn"></a> [aurora\_secret\_arn](#output\_aurora\_secret\_arn) | ARN of the Aurora Secrets Manager secret, or null when features.aurora is false |
+| <a name="output_cloudfront_domain"></a> [cloudfront\_domain](#output\_cloudfront\_domain) | CloudFront distribution domain name, or null when features.cloudfront is false |
+| <a name="output_cognito_client_id"></a> [cognito\_client\_id](#output\_cognito\_client\_id) | ID of the Cognito App Client, or null when features.cognito is false |
+| <a name="output_cognito_domain"></a> [cognito\_domain](#output\_cognito\_domain) | Cognito hosted domain URL, or null when features.cognito is false |
+| <a name="output_cognito_user_pool_id"></a> [cognito\_user\_pool\_id](#output\_cognito\_user\_pool\_id) | ID of the Cognito User Pool, or null when features.cognito is false |
+| <a name="output_dynamodb_table_name"></a> [dynamodb\_table\_name](#output\_dynamodb\_table\_name) | Name of the DynamoDB table |
+| <a name="output_ec2_public_dns"></a> [ec2\_public\_dns](#output\_ec2\_public\_dns) | Public DNS hostname of the EC2 instance |
+| <a name="output_ec2_public_ip"></a> [ec2\_public\_ip](#output\_ec2\_public\_ip) | Public IP address of the EC2 instance |
+| <a name="output_elasticache_endpoint"></a> [elasticache\_endpoint](#output\_elasticache\_endpoint) | ElastiCache Valkey endpoint (host:port), or null when features.elasticache is false |
+| <a name="output_elasticache_secret_arn"></a> [elasticache\_secret\_arn](#output\_elasticache\_secret\_arn) | ARN of the ElastiCache Secrets Manager secret, or null when features.elasticache is false |
+| <a name="output_lambda_function_name"></a> [lambda\_function\_name](#output\_lambda\_function\_name) | Name of the Lambda function |
+| <a name="output_lambda_function_url"></a> [lambda\_function\_url](#output\_lambda\_function\_url) | Lambda Function URL — public HTTPS endpoint (credit activity) |
+| <a name="output_rds_db_name"></a> [rds\_db\_name](#output\_rds\_db\_name) | Name of the RDS database, or null when features.rds is false |
+| <a name="output_rds_endpoint"></a> [rds\_endpoint](#output\_rds\_endpoint) | RDS PostgreSQL endpoint (host:port), or null when features.rds is false |
+| <a name="output_rds_secret_arn"></a> [rds\_secret\_arn](#output\_rds\_secret\_arn) | ARN of the RDS Secrets Manager secret, or null when features.rds is false |
+| <a name="output_s3_bucket_name"></a> [s3\_bucket\_name](#output\_s3\_bucket\_name) | Name of the S3 assets bucket |
+| <a name="output_sns_topic_arn"></a> [sns\_topic\_arn](#output\_sns\_topic\_arn) | ARN of the SNS alerts topic |
+| <a name="output_sqs_queue_url"></a> [sqs\_queue\_url](#output\_sqs\_queue\_url) | URL of the SQS main queue |
+| <a name="output_step_functions_arn"></a> [step\_functions\_arn](#output\_step\_functions\_arn) | ARN of the Step Functions state machine, or null when features.step\_functions is false |
+| <a name="output_valkey_engine_version"></a> [valkey\_engine\_version](#output\_valkey\_engine\_version) | Valkey engine version deployed to ElastiCache, or null when features.elasticache is false |
+<!-- END_TF_DOCS -->

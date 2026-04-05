@@ -8,7 +8,7 @@ resource "aws_scheduler_schedule" "lambda_ping" {
   description = "Invokes the Lambda handler every 5 minutes"
 
   flexible_time_window {
-    mode = "OFF"  # No jitter — invoke exactly on schedule
+    mode = "OFF" # No jitter — invoke exactly on schedule
   }
 
   schedule_expression = "rate(5 minutes)"

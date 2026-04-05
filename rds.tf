@@ -9,8 +9,7 @@ resource "aws_db_subnet_group" "main" {
   subnet_ids = [for s in aws_subnet.private : s.id]
 
   tags = merge(var.tags, {
-    Name    = "${var.project_name}-db-subnet-group"
-    Project = var.project_name
+    Name = "${var.project_name}-db-subnet-group"
   })
 }
 
@@ -29,24 +28,25 @@ resource "aws_db_instance" "postgres" {
   instance_class = var.rds_instance_class
 
   allocated_storage     = var.rds_allocated_storage
-  max_allocated_storage = var.rds_allocated_storage  # ⚠️ Prevents auto-scaling past free plan limit
+  max_allocated_storage = var.rds_allocated_storage # ⚠️ Prevents auto-scaling past free plan limit
   storage_type          = "gp2"
-  storage_encrypted     = true  # Free with default AWS-managed key
+  storage_encrypted     = true # Free with default AWS-managed key
 
-  db_name         = "${var.project_name}db"
-  username        = var.db_username
-  password_wo     = var.db_password  # Write-only — password is never written to Terraform state
-  port            = 5432
+  db_name             = "${var.project_name}db"
+  username            = var.db_username
+  password_wo         = var.db_password # Write-only — password is never written to Terraform state
+  password_wo_version = 1
+  port                = 5432
 
   db_subnet_group_name   = aws_db_subnet_group.main["this"].name
-  vpc_security_group_ids = [aws_security_group.rds.id]
+  vpc_security_group_ids = [aws_security_group.rds["this"].id]
   parameter_group_name   = "default.postgres17"
 
   backup_retention_period = 1
   backup_window           = "03:00-04:00"
   maintenance_window      = "Mon:04:00-Mon:05:00"
 
-  multi_az            = false  # ⚠️ true doubles cost
+  multi_az            = false # ⚠️ true doubles cost
   publicly_accessible = false
   deletion_protection = false
   skip_final_snapshot = true
@@ -59,7 +59,6 @@ resource "aws_db_instance" "postgres" {
   database_insights_mode                = "standard"
 
   tags = merge(var.tags, {
-    Name    = "${var.project_name}-postgres"
-    Project = var.project_name
+    Name = "${var.project_name}-postgres"
   })
 }

@@ -6,12 +6,11 @@
 resource "aws_sqs_queue" "dlq" {
   name = "${var.project_name}-dlq"
 
-  message_retention_seconds = 1209600  # 14 days — max retention for dead letters
-  sqs_managed_sse_enabled   = true     # SSE-SQS encryption (free)
+  message_retention_seconds = 1209600 # 14 days — max retention for dead letters
+  sqs_managed_sse_enabled   = true    # SSE-SQS encryption (free)
 
   tags = merge(var.tags, {
-    Name    = "${var.project_name}-dlq"
-    Project = var.project_name
+    Name = "${var.project_name}-dlq"
   })
 }
 
@@ -19,13 +18,12 @@ resource "aws_sqs_queue" "dlq" {
 resource "aws_sqs_queue" "main" {
   name = "${var.project_name}-queue"
 
-  visibility_timeout_seconds = 30     # Time a consumer has to process a message
-  message_retention_seconds  = 86400  # 24 hours
-  sqs_managed_sse_enabled    = true   # SSE-SQS encryption (free)
+  visibility_timeout_seconds = 30    # Time a consumer has to process a message
+  message_retention_seconds  = 86400 # 24 hours
+  sqs_managed_sse_enabled    = true  # SSE-SQS encryption (free)
 
   tags = merge(var.tags, {
-    Name    = "${var.project_name}-queue"
-    Project = var.project_name
+    Name = "${var.project_name}-queue"
   })
 }
 

@@ -11,8 +11,7 @@ resource "aws_s3_bucket" "assets" {
   bucket = "${var.project_name}-assets-${random_id.suffix.hex}"
 
   tags = merge(var.tags, {
-    Name    = "${var.project_name}-assets"
-    Project = var.project_name
+    Name = "${var.project_name}-assets"
   })
 }
 

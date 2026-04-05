@@ -15,8 +15,7 @@ resource "aws_apigatewayv2_api" "main" {
   }
 
   tags = merge(var.tags, {
-    Name    = "${var.project_name}-api"
-    Project = var.project_name
+    Name = "${var.project_name}-api"
   })
 }
 
@@ -26,14 +25,14 @@ resource "aws_apigatewayv2_stage" "default" {
   auto_deploy = true
 
   tags = merge(var.tags, {
-    Name    = "${var.project_name}-api-stage"
-    Project = var.project_name
+    Name = "${var.project_name}-api-stage"
   })
 }
 
 resource "aws_apigatewayv2_integration" "lambda" {
   api_id                 = aws_apigatewayv2_api.main.id
   integration_type       = "AWS_PROXY"
+  integration_method     = "POST"
   integration_uri        = aws_lambda_function.handler.invoke_arn
   payload_format_version = "2.0"
 }

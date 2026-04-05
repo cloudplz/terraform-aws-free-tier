@@ -3,6 +3,10 @@
 # ⚠️ Do NOT add web_acl_id — WAF is not free
 # ⚠️ price_class = "PriceClass_All" routes to all edge locations; PriceClass_100 is cheaper beyond free tier
 
+data "aws_cloudfront_cache_policy" "caching_optimized" {
+  name = "Managed-CachingOptimized"
+}
+
 resource "aws_cloudfront_origin_access_control" "assets" {
   for_each = var.features.cloudfront ? { this = {} } : {}
 
@@ -19,7 +23,7 @@ resource "aws_cloudfront_distribution" "assets" {
   enabled             = true
   default_root_object = "index.html"
   comment             = "${var.project_name} assets distribution"
-  price_class         = "PriceClass_100"  # US, Canada, Europe — cheaper beyond free tier
+  price_class         = "PriceClass_100" # US, Canada, Europe — cheaper beyond free tier
 
   origin {
     domain_name              = aws_s3_bucket.assets.bucket_regional_domain_name
@@ -32,7 +36,7 @@ resource "aws_cloudfront_distribution" "assets" {
     cached_methods         = ["GET", "HEAD"]
     target_origin_id       = "s3-${aws_s3_bucket.assets.id}"
     viewer_protocol_policy = "redirect-to-https"
-    cache_policy_id        = "658327ea-f89d-4fab-a63d-7e88639e58f6"  # CachingOptimized managed policy
+    cache_policy_id        = data.aws_cloudfront_cache_policy.caching_optimized.id
     compress               = true
   }
 
@@ -49,8 +53,7 @@ resource "aws_cloudfront_distribution" "assets" {
   # ⚠️ Do NOT add web_acl_id — WAF is not free
 
   tags = merge(var.tags, {
-    Name    = "${var.project_name}-distribution"
-    Project = var.project_name
+    Name = "${var.project_name}-distribution"
   })
 }
 

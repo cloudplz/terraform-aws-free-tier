@@ -9,10 +9,13 @@ override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
-.terraform.lock.hcl
+# .terraform.lock.hcl — intentionally tracked for reproducible builds
 
 # Lambda build artifacts
 **/.build/
+
+# tflint plugin cache
+.tflint.d/
 
 # OS
 .DS_Store

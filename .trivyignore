@@ -1,0 +1,21 @@
+# Trivy ignore rules for AWS Free Tier project
+# These are intentional trade-offs: each fix would incur costs that conflict
+# with the free-tier goal.
+
+# Aurora: storage_encrypted = true uses AWS-managed key (free).
+# CMK would add ~$1/month in KMS charges.
+AWS-0079
+
+# CloudFront: WAF is not free-tier eligible.
+AWS-0011
+
+# S3: AES256 (SSE-S3) is free. SSE-KMS with a CMK would add KMS charges.
+AWS-0132
+
+# EC2: unrestricted egress is standard for a web server that needs to pull
+# packages. Restricting egress would require a NAT gateway ($32/month) or
+# VPC endpoints (not free).
+AWS-0104
+
+# SNS: topic encryption requires a KMS key, which is not free-tier.
+AWS-0095

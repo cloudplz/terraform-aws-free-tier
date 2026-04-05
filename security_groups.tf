@@ -6,13 +6,16 @@ resource "aws_security_group" "ec2" {
   description = "Allow SSH from admin IP, HTTP from anywhere"
   vpc_id      = aws_vpc.main.id
 
-  # SSH — restricted to operator's IP only (only active when key_name is set)
-  ingress {
-    description = "SSH from admin IP"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = [var.my_ip_cidr]
+  # SSH — restricted to operator's IP, only when an SSH key pair is configured
+  dynamic "ingress" {
+    for_each = var.key_name != null ? [1] : []
+    content {
+      description = "SSH from admin IP"
+      from_port   = 22
+      to_port     = 22
+      protocol    = "tcp"
+      cidr_blocks = [var.my_ip_cidr]
+    }
   }
 
   # HTTP — open to the world for web serving
@@ -34,18 +37,18 @@ resource "aws_security_group" "ec2" {
   }
 
   tags = merge(var.tags, {
-    Name    = "${var.project_name}-ec2-sg"
-    Project = var.project_name
+    Name = "${var.project_name}-ec2-sg"
   })
 }
 
 # RDS / Aurora — PostgreSQL from EC2 SG only (shared by both RDS and Aurora)
 resource "aws_security_group" "rds" {
+  for_each = local.db_enabled ? { this = {} } : {}
+
   name        = "${var.project_name}-rds-sg"
   description = "Allow PostgreSQL from EC2 security group only"
   vpc_id      = aws_vpc.main.id
 
-  # PostgreSQL — only from the EC2 security group
   ingress {
     description     = "PostgreSQL from EC2"
     from_port       = 5432
@@ -55,13 +58,14 @@ resource "aws_security_group" "rds" {
   }
 
   tags = merge(var.tags, {
-    Name    = "${var.project_name}-rds-sg"
-    Project = var.project_name
+    Name = "${var.project_name}-rds-sg"
   })
 }
 
 # ElastiCache — Valkey from EC2 SG only
 resource "aws_security_group" "elasticache" {
+  for_each = var.features.elasticache ? { this = {} } : {}
+
   name        = "${var.project_name}-cache-sg"
   description = "Allow Valkey from EC2 security group only"
   vpc_id      = aws_vpc.main.id
@@ -75,7 +79,6 @@ resource "aws_security_group" "elasticache" {
   }
 
   tags = merge(var.tags, {
-    Name    = "${var.project_name}-cache-sg"
-    Project = var.project_name
+    Name = "${var.project_name}-cache-sg"
   })
 }

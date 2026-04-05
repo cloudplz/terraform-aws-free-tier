@@ -20,6 +20,11 @@ notification_email = "you@example.com"
 # db_username  = "dbadmin"      # RDS / Aurora master username
 # key_name     = null           # EC2 key pair for SSH; null = use SSM Session Manager
 
+# ─── Optional — networking ───────────────────────────────────────────────────
+
+# vpc_cidr = "10.0.0.0/16"   # VPC CIDR block — default /16 provides room for 256 /24 subnets
+# az_count = 2               # Number of availability zones (2–4)
+
 # ─── Optional — free-plan size overrides ──────────────────────────────────────
 # All defaults are at the free-plan maximum. Increasing any value may incur charges.
 

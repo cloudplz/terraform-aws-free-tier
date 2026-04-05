@@ -14,53 +14,53 @@ output "ec2_public_dns" {
 
 output "rds_endpoint" {
   description = "RDS PostgreSQL endpoint (host:port), or null when features.rds is false"
-  value = try(
+  value = nonsensitive(try(
     "${one(values(aws_db_instance.postgres)).address}:${one(values(aws_db_instance.postgres)).port}",
     null
-  )
+  ))
 }
 
 output "rds_db_name" {
   description = "Name of the RDS database, or null when features.rds is false"
-  value       = try(one(values(aws_db_instance.postgres)).db_name, null)
+  value       = nonsensitive(try(one(values(aws_db_instance.postgres)).db_name, null))
 }
 
 output "rds_secret_arn" {
-  description = "ARN of the /${var.project_name}/rds Secrets Manager secret, or null when features.rds is false"
-  value       = try(one(values(aws_secretsmanager_secret.rds)).arn, null)
+  description = "ARN of the RDS Secrets Manager secret, or null when features.rds is false"
+  value       = nonsensitive(try(one(values(aws_secretsmanager_secret.rds)).arn, null))
 }
 
 output "aurora_endpoint" {
   description = "Aurora PostgreSQL cluster writer endpoint, or null when features.aurora is false"
-  value       = try(one(values(aws_rds_cluster.aurora)).endpoint, null)
+  value       = nonsensitive(try(one(values(aws_rds_cluster.aurora)).endpoint, null))
 }
 
 output "aurora_reader_endpoint" {
   description = "Aurora PostgreSQL cluster reader endpoint, or null when features.aurora is false"
-  value       = try(one(values(aws_rds_cluster.aurora)).reader_endpoint, null)
+  value       = nonsensitive(try(one(values(aws_rds_cluster.aurora)).reader_endpoint, null))
 }
 
 output "aurora_secret_arn" {
-  description = "ARN of the /${var.project_name}/aurora Secrets Manager secret, or null when features.aurora is false"
-  value       = try(one(values(aws_secretsmanager_secret.aurora)).arn, null)
+  description = "ARN of the Aurora Secrets Manager secret, or null when features.aurora is false"
+  value       = nonsensitive(try(one(values(aws_secretsmanager_secret.aurora)).arn, null))
 }
 
 output "elasticache_endpoint" {
   description = "ElastiCache Valkey endpoint (host:port), or null when features.elasticache is false"
-  value = try(
+  value = nonsensitive(try(
     "${one(values(aws_elasticache_cluster.valkey)).cache_nodes[0].address}:${one(values(aws_elasticache_cluster.valkey)).cache_nodes[0].port}",
     null
-  )
+  ))
 }
 
 output "elasticache_secret_arn" {
-  description = "ARN of the /${var.project_name}/elasticache Secrets Manager secret, or null when features.elasticache is false"
-  value       = try(one(values(aws_secretsmanager_secret.elasticache)).arn, null)
+  description = "ARN of the ElastiCache Secrets Manager secret, or null when features.elasticache is false"
+  value       = nonsensitive(try(one(values(aws_secretsmanager_secret.elasticache)).arn, null))
 }
 
 output "valkey_engine_version" {
   description = "Valkey engine version deployed to ElastiCache, or null when features.elasticache is false"
-  value       = try(one(values(aws_elasticache_cluster.valkey)).engine_version, null)
+  value       = nonsensitive(try(one(values(aws_elasticache_cluster.valkey)).engine_version, null))
 }
 
 # ─── Storage (always created) ─────────────────────────────────────────────────

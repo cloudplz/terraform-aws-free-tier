@@ -94,6 +94,8 @@ Covers all 5 credit-earning activities for new accounts (+$100 in credits).
 | `db_password`       | *(required)*  | RDS PostgreSQL master password (**sensitive**)        |
 | `my_ip_cidr`        | *(required)*  | Your public IP in CIDR for SSH (e.g., `1.2.3.4/32`) |
 | `notification_email`| *(required)*  | Email for SNS alerts and Budgets notifications       |
+| `vpc_cidr`          | `10.0.0.0/16` | VPC CIDR block                                       |
+| `az_count`          | `2`           | Number of availability zones (2-4)                   |
 
 ## Quick Start
 
@@ -126,4 +128,5 @@ After apply, confirm the SNS email subscription (check your inbox).
 | DynamoDB       | `PROVISIONED`, 25 RCU/WCU         | 25 RCU + 25 WCU (always)  | On-demand or > 25 incurs charges      |
 | SQS            | Standard queue (not FIFO)         | 1M requests/month (always)| FIFO burns faster                     |
 | CloudWatch     | 2 alarms, 7d log retention        | 10 alarms, 5 GB (always)  | > 10 alarms or long retention         |
+| Secrets Manager| $0.40/secret/month                | NOT free tier              | Each enabled secret incurs charges    |
 | Budgets        | 2 notifications (no actions)      | 2 action budgets (always) | > 2 action-enabled budgets            |

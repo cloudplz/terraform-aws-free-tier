@@ -187,7 +187,7 @@ resource "aws_iam_policy" "bedrock_logging" {
         "logs:PutLogEvents",
         "logs:DescribeLogStreams",
       ]
-      Resource = "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/${var.project_name}/bedrock:*"
+      Resource = "arn:aws:logs:${local.region}:${local.account_id}:log-group:/aws/${var.project_name}/bedrock:*"
     }]
   })
 }

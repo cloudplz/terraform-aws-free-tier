@@ -23,8 +23,7 @@ resource "aws_cognito_user_pool" "main" {
   }
 
   tags = merge(var.tags, {
-    Name    = "${var.project_name}-user-pool"
-    Project = var.project_name
+    Name = "${var.project_name}-user-pool"
   })
 }
 
@@ -43,7 +42,7 @@ resource "aws_cognito_user_pool_client" "main" {
   name         = "${var.project_name}-app-client"
   user_pool_id = aws_cognito_user_pool.main["this"].id
 
-  generate_secret               = false  # Public client
+  generate_secret               = false # Public client
   prevent_user_existence_errors = "ENABLED"
   enable_token_revocation       = true
 

@@ -54,6 +54,33 @@ variable "key_name" {
   default     = null
 }
 
+# ─── Networking ──────────────────────────────────────────────────────────────
+
+variable "vpc_cidr" {
+  description = "CIDR block for the VPC. Default /16 provides room for 256 /24 subnets."
+  type        = string
+  default     = "10.0.0.0/16"
+
+  validation {
+    condition = (
+      can(cidrhost(var.vpc_cidr, 0)) &&
+      tonumber(split("/", var.vpc_cidr)[1]) <= 20
+    )
+    error_message = "vpc_cidr must be a valid IPv4 CIDR block with prefix <= /20 so Terraform can derive valid public and private subnets."
+  }
+}
+
+variable "az_count" {
+  description = "Number of availability zones for subnet placement (2 is sufficient for most free-tier workloads)."
+  type        = number
+  default     = 2
+
+  validation {
+    condition     = var.az_count >= 2 && var.az_count <= 4
+    error_message = "az_count must be between 2 and 4."
+  }
+}
+
 # ─── Instance / size overrides ───────────────────────────────────────────────
 # All defaults are at the free-plan maximum. Override only if you are willing
 # to accept potential charges after your credits expire.

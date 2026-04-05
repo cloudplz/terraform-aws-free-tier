@@ -11,8 +11,7 @@ resource "aws_elasticache_subnet_group" "main" {
   subnet_ids = [for s in aws_subnet.private : s.id]
 
   tags = merge(var.tags, {
-    Name    = "${var.project_name}-cache-subnet"
-    Project = var.project_name
+    Name = "${var.project_name}-cache-subnet"
   })
 }
 
@@ -22,16 +21,15 @@ resource "aws_elasticache_cluster" "valkey" {
   cluster_id           = "${var.project_name}-valkey"
   engine               = "valkey"
   engine_version       = "8.0"
-  node_type            = var.elasticache_node_type  # ⚠️ cache.t3.micro is the only free-plan eligible type
-  num_cache_nodes      = 1                           # ⚠️ > 1 node exceeds free plan
+  node_type            = var.elasticache_node_type # ⚠️ cache.t3.micro is the only free-plan eligible type
+  num_cache_nodes      = 1                         # ⚠️ > 1 node exceeds free plan
   parameter_group_name = "default.valkey8"
   port                 = 6379
 
   subnet_group_name  = aws_elasticache_subnet_group.main["this"].name
-  security_group_ids = [aws_security_group.elasticache.id]
+  security_group_ids = [aws_security_group.elasticache["this"].id]
 
   tags = merge(var.tags, {
-    Name    = "${var.project_name}-valkey"
-    Project = var.project_name
+    Name = "${var.project_name}-valkey"
   })
 }

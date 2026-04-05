@@ -18,12 +18,12 @@ resource "aws_bedrock_model_invocation_logging_configuration" "main" {
 
   logging_config {
     cloudwatch_config {
-      log_group_name = aws_cloudwatch_log_group.bedrock.name
+      log_group_name = aws_cloudwatch_log_group.bedrock["this"].name
       role_arn       = aws_iam_role.bedrock_logging["this"].arn
     }
 
-    text_data_delivery_enabled      = true   # Log text model invocations
-    image_data_delivery_enabled     = false  # Skip image model logs
-    embedding_data_delivery_enabled = false  # Skip embedding logs
+    text_data_delivery_enabled      = true  # Log text model invocations
+    image_data_delivery_enabled     = false # Skip image model logs
+    embedding_data_delivery_enabled = false # Skip embedding logs
   }
 }

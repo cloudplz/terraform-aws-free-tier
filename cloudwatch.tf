@@ -9,8 +9,7 @@ resource "aws_cloudwatch_log_group" "app" {
   retention_in_days = var.log_retention_days
 
   tags = merge(var.tags, {
-    Name    = "${var.project_name}-app-logs"
-    Project = var.project_name
+    Name = "${var.project_name}-app-logs"
   })
 }
 
@@ -19,18 +18,18 @@ resource "aws_cloudwatch_log_group" "lambda" {
   retention_in_days = var.log_retention_days
 
   tags = merge(var.tags, {
-    Name    = "${var.project_name}-lambda-logs"
-    Project = var.project_name
+    Name = "${var.project_name}-lambda-logs"
   })
 }
 
 resource "aws_cloudwatch_log_group" "bedrock" {
+  for_each = var.features.bedrock_logging ? { this = {} } : {}
+
   name              = "/aws/${var.project_name}/bedrock"
   retention_in_days = var.log_retention_days
 
   tags = merge(var.tags, {
-    Name    = "${var.project_name}-bedrock-logs"
-    Project = var.project_name
+    Name = "${var.project_name}-bedrock-logs"
   })
 }
 
@@ -56,8 +55,7 @@ resource "aws_cloudwatch_metric_alarm" "ec2_cpu_high" {
   }
 
   tags = merge(var.tags, {
-    Name    = "${var.project_name}-ec2-cpu-high"
-    Project = var.project_name
+    Name = "${var.project_name}-ec2-cpu-high"
   })
 }
 
@@ -74,7 +72,7 @@ resource "aws_cloudwatch_metric_alarm" "rds_low_storage" {
   namespace           = "AWS/RDS"
   period              = 300
   statistic           = "Average"
-  threshold           = 2147483648  # 2 GB in bytes
+  threshold           = 2147483648 # 2 GB in bytes
   treat_missing_data  = "notBreaching"
   alarm_actions       = [aws_sns_topic.alerts.arn]
 
@@ -83,7 +81,6 @@ resource "aws_cloudwatch_metric_alarm" "rds_low_storage" {
   }
 
   tags = merge(var.tags, {
-    Name    = "${var.project_name}-rds-low-storage"
-    Project = var.project_name
+    Name = "${var.project_name}-rds-low-storage"
   })
 }
