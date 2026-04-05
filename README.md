@@ -2,17 +2,57 @@
 # AWS Free Tier Terraform
 
 Provisions all major AWS free-tier services using direct `resource` blocks (no module wrappers).
-Targets the AWS legacy free tier (12-month + always-free services) in `us-east-1` and covers all
-5 credit-earning activities for new accounts (+$100 in credits).
+Targets the AWS Free Plan (post-July 2025) in `us-east-1` — $200 in credits + 30+ Always Free
+services. Covers all 5 credit-earning activities for new accounts (+$100 in bonus credits).
+
+## Prerequisites
+
+### AWS account plan
+
+This module requires the **AWS Paid Plan** (not the Free Plan). On the Free Plan, AWS blocks
+`CreateDBCluster` for Aurora with a `FreeTierRestrictionError` unless `WithExpressConfiguration`
+is used — a parameter the Terraform AWS provider does not yet support
+([hashicorp/terraform-provider-aws#47117](https://github.com/hashicorp/terraform-provider-aws/issues/47117)).
+Additionally, express configuration creates a VPC-less cluster incompatible with this module's
+VPC-based architecture.
+
+Switching to the Paid Plan preserves the full $200 in credits and removes all service
+restrictions. If you are on the Free Plan and do not want to switch, disable Aurora:
+
+```hcl
+features = { aurora = false }
+```
+
+### IAM user permissions
+
+The IAM user running Terraform must have IAM permissions (`iam:CreateRole`, `iam:CreatePolicy`,
+etc.). Without them, every IAM resource creation fails, which cascades into failures for EC2,
+Lambda, Step Functions, and Bedrock logging.
+
+The simplest fix is to attach the `IAMFullAccess` managed policy to the user. For a tighter
+scoped policy, the minimum required actions are:
+
+```
+iam:CreateRole, iam:DeleteRole, iam:GetRole, iam:PassRole,
+iam:CreatePolicy, iam:DeletePolicy, iam:GetPolicy, iam:GetPolicyVersion, iam:ListPolicyVersions,
+iam:AttachRolePolicy, iam:DetachRolePolicy, iam:ListAttachedRolePolicies,
+iam:CreateInstanceProfile, iam:DeleteInstanceProfile,
+iam:AddRoleToInstanceProfile, iam:RemoveRoleFromInstanceProfile, iam:GetInstanceProfile,
+iam:TagRole, iam:UntagRole, iam:TagPolicy, iam:UntagPolicy
+```
 
 ## Quick Start
 
 ```bash
-cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars — set db_password, my_ip_cidr, notification_email
+cd examples/complete
 terraform init
-terraform plan
-terraform apply
+terraform apply -var='name=myproject'
+```
+
+Or with email alerts:
+
+```bash
+terraform apply -var='name=myproject' -var='notification_email=you@example.com'
 ```
 
 After apply, confirm the SNS email subscription (check your inbox).
@@ -61,7 +101,7 @@ See [CLAUDE.md](CLAUDE.md) for the full architecture diagram and cost guardrails
 | [aws_db_instance.postgres](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_instance) | resource |
 | [aws_db_subnet_group.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_subnet_group) | resource |
 | [aws_dynamodb_table.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/dynamodb_table) | resource |
-| [aws_elasticache_cluster.valkey](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/elasticache_cluster) | resource |
+| [aws_elasticache_replication_group.valkey](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/elasticache_replication_group) | resource |
 | [aws_elasticache_subnet_group.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/elasticache_subnet_group) | resource |
 | [aws_iam_instance_profile.ec2](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_instance_profile) | resource |
 | [aws_iam_policy.bedrock_logging](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy) | resource |

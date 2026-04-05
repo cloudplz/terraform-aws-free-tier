@@ -48,7 +48,7 @@ output "aurora_secret_arn" {
 output "elasticache_endpoint" {
   description = "ElastiCache Valkey endpoint (host:port), or null when features.elasticache is false"
   value = nonsensitive(try(
-    "${one(values(aws_elasticache_cluster.valkey)).cache_nodes[0].address}:${one(values(aws_elasticache_cluster.valkey)).cache_nodes[0].port}",
+    "${one(values(aws_elasticache_replication_group.valkey)).primary_endpoint_address}:${one(values(aws_elasticache_replication_group.valkey)).port}",
     null
   ))
 }
@@ -60,7 +60,7 @@ output "elasticache_secret_arn" {
 
 output "valkey_engine_version" {
   description = "Valkey engine version deployed to ElastiCache, or null when features.elasticache is false"
-  value       = nonsensitive(try(one(values(aws_elasticache_cluster.valkey)).engine_version, null))
+  value       = nonsensitive(try(one(values(aws_elasticache_replication_group.valkey)).engine_version_actual, null))
 }
 
 # ─── Storage (always created) ─────────────────────────────────────────────────

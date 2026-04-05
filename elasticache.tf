@@ -15,16 +15,22 @@ resource "aws_elasticache_subnet_group" "main" {
   })
 }
 
-resource "aws_elasticache_cluster" "valkey" {
+# ⚠️ aws_elasticache_cluster does NOT support the Valkey engine — use aws_elasticache_replication_group
+# (The CreateCacheCluster API rejects Valkey; only CreateReplicationGroup accepts it.)
+resource "aws_elasticache_replication_group" "valkey" {
   for_each = var.features.elasticache ? { this = {} } : {}
 
-  cluster_id           = "${var.name}-valkey"
+  replication_group_id = "${var.name}-valkey"
+  description          = "Valkey cache for ${var.name}"
   engine               = "valkey"
   engine_version       = "8.0"
   node_type            = var.elasticache_node_type # ⚠️ cache.t3.micro is the only free-plan eligible type
-  num_cache_nodes      = 1                         # ⚠️ > 1 node exceeds free plan
+  num_cache_clusters   = 1                         # single primary, no replicas — ⚠️ > 1 exceeds free plan
   parameter_group_name = "default.valkey8"
   port                 = 6379
+
+  # automatic_failover_enabled requires num_cache_clusters >= 2 — leave disabled for free plan
+  automatic_failover_enabled = false
 
   subnet_group_name  = aws_elasticache_subnet_group.main["this"].name
   security_group_ids = [aws_security_group.elasticache["this"].id]

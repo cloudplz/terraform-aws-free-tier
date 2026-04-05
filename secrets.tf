@@ -84,8 +84,8 @@ resource "aws_secretsmanager_secret_version" "elasticache" {
 
   secret_id = aws_secretsmanager_secret.elasticache["this"].id
   secret_string_wo = jsonencode({
-    endpoint = aws_elasticache_cluster.valkey["this"].cache_nodes[0].address
-    port     = aws_elasticache_cluster.valkey["this"].cache_nodes[0].port
+    endpoint = aws_elasticache_replication_group.valkey["this"].primary_endpoint_address
+    port     = aws_elasticache_replication_group.valkey["this"].port
     engine   = "valkey"
   })
   secret_string_wo_version = 1
