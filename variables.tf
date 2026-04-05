@@ -26,3 +26,8 @@ variable "my_ip_cidr" {
   description = "Your public IP in CIDR notation (e.g., '203.0.113.42/32') for SSH access to the EC2 instance."
   type        = string
 }
+
+variable "notification_email" {
+  description = "Email address for SNS subscription, Budgets alerts, and CloudWatch alarm actions."
+  type        = string
+}

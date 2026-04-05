@@ -1,9 +1,10 @@
-# Security group for the EC2 instance.
-# Free tier: security groups are free. No cost concern here.
+# Security groups — free. No cost concern.
+
+# EC2 — SSH restricted to operator IP, HTTP/HTTPS open to the world
 resource "aws_security_group" "ec2" {
   name        = "${var.project_name}-ec2-sg"
   description = "Allow SSH from admin IP, HTTP/HTTPS from anywhere"
-  vpc_id      = module.vpc.vpc_id
+  vpc_id      = aws_vpc.main.id
 
   # SSH — restricted to operator's IP only
   ingress {
@@ -46,12 +47,11 @@ resource "aws_security_group" "ec2" {
   }
 }
 
-# Security group for the RDS instance.
-# Free tier: security groups are free. Restricts PostgreSQL access to EC2 only.
+# RDS — PostgreSQL from EC2 SG only
 resource "aws_security_group" "rds" {
   name        = "${var.project_name}-rds-sg"
   description = "Allow PostgreSQL from EC2 security group only"
-  vpc_id      = module.vpc.vpc_id
+  vpc_id      = aws_vpc.main.id
 
   # PostgreSQL — only from the EC2 security group
   ingress {
@@ -73,5 +73,32 @@ resource "aws_security_group" "rds" {
 
   tags = {
     Name = "${var.project_name}-rds-sg"
+  }
+}
+
+# ElastiCache — Redis from EC2 SG only
+resource "aws_security_group" "elasticache" {
+  name        = "${var.project_name}-cache-sg"
+  description = "Allow Redis from EC2 security group only"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description     = "Redis from EC2"
+    from_port       = 6379
+    to_port         = 6379
+    protocol        = "tcp"
+    security_groups = [aws_security_group.ec2.id]
+  }
+
+  egress {
+    description = "Allow all outbound"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.project_name}-cache-sg"
   }
 }
