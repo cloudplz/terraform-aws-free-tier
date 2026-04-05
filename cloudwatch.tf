@@ -2,30 +2,42 @@
 # ⚠️ More than 10 alarms incur charges
 # ⚠️ Long retention + high log volume may exceed the 5 GB free storage limit
 
-# ─── Log Groups (retention = 7 days to stay within 5 GB free storage) ───
+# ─── Log Groups ───────────────────────────────────────────────────────────────
 
 resource "aws_cloudwatch_log_group" "app" {
   name              = "/aws/${var.project_name}/app"
-  retention_in_days = 7
-  tags = { Name = "${var.project_name}-app-logs" }
+  retention_in_days = var.log_retention_days
+
+  tags = merge(var.tags, {
+    Name    = "${var.project_name}-app-logs"
+    Project = var.project_name
+  })
 }
 
 resource "aws_cloudwatch_log_group" "lambda" {
   name              = "/aws/lambda/${var.project_name}-handler"
-  retention_in_days = 7
-  tags = { Name = "${var.project_name}-lambda-logs" }
+  retention_in_days = var.log_retention_days
+
+  tags = merge(var.tags, {
+    Name    = "${var.project_name}-lambda-logs"
+    Project = var.project_name
+  })
 }
 
 resource "aws_cloudwatch_log_group" "bedrock" {
   name              = "/aws/${var.project_name}/bedrock"
-  retention_in_days = 7
-  tags = { Name = "${var.project_name}-bedrock-logs" }
+  retention_in_days = var.log_retention_days
+
+  tags = merge(var.tags, {
+    Name    = "${var.project_name}-bedrock-logs"
+    Project = var.project_name
+  })
 }
 
-# ─── Alarms (2 of 10 free slots) ───
-
-# EC2 CPU > 80% for 10 minutes — detects runaway processes
+# ─── Alarms (2 of 10 free slots) ──────────────────────────────────────────────
 # ⚠️ More than 10 alarms will incur charges
+
+# EC2 CPU > 80% for 10 minutes — detects runaway processes (always created; EC2 is core)
 resource "aws_cloudwatch_metric_alarm" "ec2_cpu_high" {
   alarm_name          = "${var.project_name}-ec2-cpu-high"
   alarm_description   = "EC2 CPU utilization exceeds 80% for 10 minutes"
@@ -43,14 +55,19 @@ resource "aws_cloudwatch_metric_alarm" "ec2_cpu_high" {
     InstanceId = aws_instance.web.id
   }
 
-  tags = { Name = "${var.project_name}-ec2-cpu-high" }
+  tags = merge(var.tags, {
+    Name    = "${var.project_name}-ec2-cpu-high"
+    Project = var.project_name
+  })
 }
 
-# RDS free storage < 2 GB — warns before hitting the 20 GB free tier ceiling
-# ⚠️ More than 10 alarms will incur charges
+# RDS free storage < 2 GB — warns before hitting the 20 GB free plan ceiling
+# Only created when features.rds is enabled
 resource "aws_cloudwatch_metric_alarm" "rds_low_storage" {
+  for_each = var.features.rds ? { this = {} } : {}
+
   alarm_name          = "${var.project_name}-rds-low-storage"
-  alarm_description   = "RDS free storage below 2 GB — approaching 20 GB free tier limit"
+  alarm_description   = "RDS free storage below 2 GB — approaching 20 GB free plan limit"
   comparison_operator = "LessThanThreshold"
   evaluation_periods  = 2
   metric_name         = "FreeStorageSpace"
@@ -62,8 +79,11 @@ resource "aws_cloudwatch_metric_alarm" "rds_low_storage" {
   alarm_actions       = [aws_sns_topic.alerts.arn]
 
   dimensions = {
-    DBInstanceIdentifier = aws_db_instance.postgres.identifier
+    DBInstanceIdentifier = aws_db_instance.postgres["this"].identifier
   }
 
-  tags = { Name = "${var.project_name}-rds-low-storage" }
+  tags = merge(var.tags, {
+    Name    = "${var.project_name}-rds-low-storage"
+    Project = var.project_name
+  })
 }

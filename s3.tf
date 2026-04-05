@@ -3,16 +3,17 @@ resource "random_id" "suffix" {
   byte_length = 4
 }
 
-# S3 — free tier: 5 GB standard storage, 20K GET, 2K PUT/month (12-month)
+# S3 — free plan: 5 GB standard storage, 20K GET, 2K PUT/month
 # ⚠️ Storing more than 5 GB incurs standard S3 charges
 # ⚠️ Enabling versioning causes each version to count toward the 5 GB limit
 
 resource "aws_s3_bucket" "assets" {
   bucket = "${var.project_name}-assets-${random_id.suffix.hex}"
 
-  tags = {
-    Name = "${var.project_name}-assets"
-  }
+  tags = merge(var.tags, {
+    Name    = "${var.project_name}-assets"
+    Project = var.project_name
+  })
 }
 
 # Block all public access — CloudFront OAC is used for serving content

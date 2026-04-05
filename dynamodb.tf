@@ -1,14 +1,14 @@
 # DynamoDB — always free: 25 RCU + 25 WCU + 25 GB storage
-# ⚠️ billing_mode = "PAY_PER_REQUEST" is NOT covered by free tier
-# ⚠️ read_capacity or write_capacity > 25 will exceed free tier allowance
+# ⚠️ billing_mode = "PAY_PER_REQUEST" is NOT covered by the always-free tier
+# ⚠️ read_capacity or write_capacity > 25 will exceed the always-free allowance
 # ⚠️ Storing more than 25 GB of data will incur charges
 
 resource "aws_dynamodb_table" "main" {
   name         = "${var.project_name}-table"
   billing_mode = "PROVISIONED"  # ⚠️ PAY_PER_REQUEST (on-demand) is NOT free tier
 
-  read_capacity  = 25  # Free tier max — do not exceed
-  write_capacity = 25  # Free tier max — do not exceed
+  read_capacity  = 25  # Always-free max — do not exceed
+  write_capacity = 25  # Always-free max — do not exceed
 
   hash_key  = "pk"
   range_key = "sk"
@@ -35,7 +35,8 @@ resource "aws_dynamodb_table" "main" {
     enabled = true
   }
 
-  tags = {
-    Name = "${var.project_name}-table"
-  }
+  tags = merge(var.tags, {
+    Name    = "${var.project_name}-table"
+    Project = var.project_name
+  })
 }

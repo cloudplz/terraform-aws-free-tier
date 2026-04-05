@@ -3,9 +3,10 @@
 resource "aws_sns_topic" "alerts" {
   name = "${var.project_name}-alerts"
 
-  tags = {
-    Name = "${var.project_name}-alerts"
-  }
+  tags = merge(var.tags, {
+    Name    = "${var.project_name}-alerts"
+    Project = var.project_name
+  })
 }
 
 # Email subscription — AWS will send a confirmation email to notification_email.

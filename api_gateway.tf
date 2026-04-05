@@ -1,4 +1,4 @@
-# API Gateway HTTP API — free tier: 1M HTTP API calls/month (12-month)
+# API Gateway HTTP API — free tier: 1M HTTP API calls/month
 # HTTP API (V2) is the modern approach; cheaper beyond free tier than REST API (V1).
 # ⚠️ REST API (V1) also qualifies for the free tier but HTTP API is recommended
 
@@ -14,9 +14,10 @@ resource "aws_apigatewayv2_api" "main" {
     max_age       = 300
   }
 
-  tags = {
-    Name = "${var.project_name}-api"
-  }
+  tags = merge(var.tags, {
+    Name    = "${var.project_name}-api"
+    Project = var.project_name
+  })
 }
 
 resource "aws_apigatewayv2_stage" "default" {
@@ -24,9 +25,10 @@ resource "aws_apigatewayv2_stage" "default" {
   name        = "$default"
   auto_deploy = true
 
-  tags = {
-    Name = "${var.project_name}-api-stage"
-  }
+  tags = merge(var.tags, {
+    Name    = "${var.project_name}-api-stage"
+    Project = var.project_name
+  })
 }
 
 resource "aws_apigatewayv2_integration" "lambda" {

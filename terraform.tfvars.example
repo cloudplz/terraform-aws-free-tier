@@ -1,15 +1,8 @@
-# AWS region — us-east-1 has the broadest free tier coverage
-aws_region = "us-east-1"
+# ─── Required ─────────────────────────────────────────────────────────────────
 
-# Project name prefix — applied to all resource names and tags
-project_name = "freetier"
-
-# RDS PostgreSQL master username — avoid reserved words like 'admin' or 'postgres'
-db_username = "dbadmin"
-
-# RDS PostgreSQL master password — minimum 8 characters
+# RDS PostgreSQL / Aurora master password — minimum 8 characters
 # ⚠️ NEVER commit this value to version control. Use terraform.tfvars (gitignored)
-# or TF_VAR_db_password environment variable instead.
+# or the TF_VAR_db_password environment variable instead.
 db_password = "CHANGE_ME_at_least_8_chars"
 
 # Your public IP in CIDR notation for SSH access to the EC2 instance
@@ -20,6 +13,47 @@ my_ip_cidr = "203.0.113.42/32"
 # You will receive a subscription confirmation email — click the link to activate
 notification_email = "you@example.com"
 
-# EC2 key pair name for SSH access (optional — SSM Session Manager works without it)
-# Create a key pair first: aws ec2 create-key-pair --key-name freetier --query 'KeyMaterial' --output text > freetier.pem
-# key_name = "freetier"
+# ─── Optional — project identity ──────────────────────────────────────────────
+
+# aws_region   = "us-east-1"    # us-east-1 has the broadest free plan coverage
+# project_name = "freetier"     # Prefix applied to all resource names (≤20 chars)
+# db_username  = "dbadmin"      # RDS / Aurora master username
+# key_name     = null           # EC2 key pair for SSH; null = use SSM Session Manager
+
+# ─── Optional — free-plan size overrides ──────────────────────────────────────
+# All defaults are at the free-plan maximum. Increasing any value may incur charges.
+
+# ec2_instance_type     = "t4g.micro"      # t-family only; t4g.micro is free-plan eligible
+# ec2_volume_size_gb    = 30               # <= 30 GB to stay within free plan EBS allowance
+# rds_instance_class    = "db.t4g.micro"   # db.t3.micro or db.t4g.micro only
+# rds_allocated_storage = 20               # <= 20 GB to stay within free plan storage
+# aurora_min_capacity   = 0.5              # >= 0.5 ACUs (platform minimum)
+# aurora_max_capacity   = 4.0              # <= 4.0 ACUs (free plan cap)
+# lambda_memory_mb      = 128              # <= 128 MB to maximize free GB-seconds
+# elasticache_node_type = "cache.t3.micro" # only free-plan eligible node type
+# log_retention_days    = 7                # must be a valid CloudWatch retention value
+
+# ─── Optional — feature toggles ───────────────────────────────────────────────
+# Core services (VPC, EC2, Lambda, S3, DynamoDB, SQS, SNS, IAM, CloudWatch,
+# Budgets) are always created. Omit features entirely to enable all defaults.
+
+# features = {
+#   rds             = true
+#   aurora          = true
+#   elasticache     = true
+#   cloudfront      = true
+#   cognito         = true
+#   step_functions  = true
+#   bedrock_logging = true
+# }
+
+# Example — database-only stack (no caching, no CDN, no auth):
+# features = {
+#   rds             = true
+#   aurora          = false
+#   elasticache     = false
+#   cloudfront      = false
+#   cognito         = false
+#   step_functions  = false
+#   bedrock_logging = false
+# }

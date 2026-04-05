@@ -4,6 +4,8 @@
 # ⚠️ price_class = "PriceClass_All" routes to all edge locations; PriceClass_100 is cheaper beyond free tier
 
 resource "aws_cloudfront_origin_access_control" "assets" {
+  for_each = var.features.cloudfront ? { this = {} } : {}
+
   name                              = "${var.project_name}-oac"
   description                       = "OAC for ${var.project_name} S3 assets"
   origin_access_control_origin_type = "s3"
@@ -12,6 +14,8 @@ resource "aws_cloudfront_origin_access_control" "assets" {
 }
 
 resource "aws_cloudfront_distribution" "assets" {
+  for_each = var.features.cloudfront ? { this = {} } : {}
+
   enabled             = true
   default_root_object = "index.html"
   comment             = "${var.project_name} assets distribution"
@@ -20,7 +24,7 @@ resource "aws_cloudfront_distribution" "assets" {
   origin {
     domain_name              = aws_s3_bucket.assets.bucket_regional_domain_name
     origin_id                = "s3-${aws_s3_bucket.assets.id}"
-    origin_access_control_id = aws_cloudfront_origin_access_control.assets.id
+    origin_access_control_id = aws_cloudfront_origin_access_control.assets["this"].id
   }
 
   default_cache_behavior {
@@ -28,7 +32,7 @@ resource "aws_cloudfront_distribution" "assets" {
     cached_methods         = ["GET", "HEAD"]
     target_origin_id       = "s3-${aws_s3_bucket.assets.id}"
     viewer_protocol_policy = "redirect-to-https"
-    cache_policy_id        = "658327ea-f89d-4fab-a63d-7e88639e58f6" # CachingOptimized managed policy
+    cache_policy_id        = "658327ea-f89d-4fab-a63d-7e88639e58f6"  # CachingOptimized managed policy
     compress               = true
   }
 
@@ -44,13 +48,16 @@ resource "aws_cloudfront_distribution" "assets" {
 
   # ⚠️ Do NOT add web_acl_id — WAF is not free
 
-  tags = {
-    Name = "${var.project_name}-distribution"
-  }
+  tags = merge(var.tags, {
+    Name    = "${var.project_name}-distribution"
+    Project = var.project_name
+  })
 }
 
 # Grant CloudFront OAC permission to read from the S3 bucket
 resource "aws_s3_bucket_policy" "cloudfront_access" {
+  for_each = var.features.cloudfront ? { this = {} } : {}
+
   bucket = aws_s3_bucket.assets.id
 
   policy = jsonencode({
@@ -63,7 +70,7 @@ resource "aws_s3_bucket_policy" "cloudfront_access" {
       Resource  = "${aws_s3_bucket.assets.arn}/*"
       Condition = {
         StringEquals = {
-          "AWS:SourceArn" = aws_cloudfront_distribution.assets.arn
+          "AWS:SourceArn" = aws_cloudfront_distribution.assets["this"].arn
         }
       }
     }]

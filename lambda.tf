@@ -23,12 +23,13 @@ resource "aws_lambda_function" "handler" {
   filename         = data.archive_file.lambda_placeholder.output_path
   source_code_hash = data.archive_file.lambda_placeholder.output_base64sha256
 
-  memory_size = 128  # Minimum — maximizes free tier GB-seconds
-  timeout     = 10   # ⚠️ Higher timeout risks consuming free quota
+  memory_size = var.lambda_memory_mb  # Minimum — maximizes free tier GB-seconds
+  timeout     = 10                    # ⚠️ Higher timeout risks consuming free quota
 
-  tags = {
-    Name = "${var.project_name}-handler"
-  }
+  tags = merge(var.tags, {
+    Name    = "${var.project_name}-handler"
+    Project = var.project_name
+  })
 }
 
 # Lambda Function URL — required for the $20 Lambda credit activity

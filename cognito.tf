@@ -3,6 +3,8 @@
 # ⚠️ SAML/OIDC federation reduces free tier to 50 MAUs
 
 resource "aws_cognito_user_pool" "main" {
+  for_each = var.features.cognito ? { this = {} } : {}
+
   name = "${var.project_name}-user-pool"
 
   auto_verified_attributes = ["email"]
@@ -20,21 +22,26 @@ resource "aws_cognito_user_pool" "main" {
     advanced_security_mode = "OFF"
   }
 
-  tags = {
-    Name = "${var.project_name}-user-pool"
-  }
+  tags = merge(var.tags, {
+    Name    = "${var.project_name}-user-pool"
+    Project = var.project_name
+  })
 }
 
 # Cognito-hosted domain for the sign-in UI (free)
 resource "aws_cognito_user_pool_domain" "main" {
+  for_each = var.features.cognito ? { this = {} } : {}
+
   domain       = "${var.project_name}-auth-${random_id.suffix.hex}"
-  user_pool_id = aws_cognito_user_pool.main.id
+  user_pool_id = aws_cognito_user_pool.main["this"].id
 }
 
 # App client — public client (SPA/mobile), no client secret
 resource "aws_cognito_user_pool_client" "main" {
+  for_each = var.features.cognito ? { this = {} } : {}
+
   name         = "${var.project_name}-app-client"
-  user_pool_id = aws_cognito_user_pool.main.id
+  user_pool_id = aws_cognito_user_pool.main["this"].id
 
   generate_secret               = false  # Public client
   prevent_user_existence_errors = "ENABLED"

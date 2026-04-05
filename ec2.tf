@@ -1,11 +1,11 @@
-# EC2 — free tier: 750 hrs/month of t4g.micro (12-month, Graviton2 ARM)
+# EC2 — free plan: 750 hrs/month of t4g.micro (Graviton2 ARM)
 # ⚠️ Changing instance_type to anything larger will incur charges
-# ⚠️ Root volume > 30 GB exceeds the free tier EBS allowance (30 GB total)
+# ⚠️ Root volume > 30 GB exceeds the free plan EBS allowance (30 GB total)
 
 resource "aws_instance" "web" {
   ami           = data.aws_ssm_parameter.al2023_ami.value
-  instance_type = "t4g.micro"  # Graviton2 ARM — free tier eligible
-  key_name      = var.key_name # SSH key pair — set to null to disable SSH access
+  instance_type = var.ec2_instance_type
+  key_name      = var.key_name  # SSH key pair — set to null to disable SSH access
 
   subnet_id                   = aws_subnet.public[0].id
   vpc_security_group_ids      = [aws_security_group.ec2.id]
@@ -23,11 +23,10 @@ resource "aws_instance" "web" {
     http_tokens = "required"
   }
 
-  # 30 GB gp3 root volume — free tier max
-  # ⚠️ Increasing beyond 30 GB exceeds the free tier EBS storage allowance
+  # ⚠️ Increasing beyond 30 GB exceeds the free plan EBS storage allowance
   root_block_device {
     volume_type           = "gp3"
-    volume_size           = 30
+    volume_size           = var.ec2_volume_size_gb
     encrypted             = true
     delete_on_termination = true
   }
@@ -41,7 +40,8 @@ resource "aws_instance" "web" {
     systemctl start nginx
   EOF
 
-  tags = {
-    Name = "${var.project_name}-web"
-  }
+  tags = merge(var.tags, {
+    Name    = "${var.project_name}-web"
+    Project = var.project_name
+  })
 }

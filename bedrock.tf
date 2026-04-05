@@ -1,5 +1,5 @@
 # Bedrock — model invocation logging configuration
-# ⚠️ Bedrock model inference is NOT free tier — you pay per token/request
+# ⚠️ Bedrock model inference is NOT free — you pay per token/request
 # ⚠️ This file configures the logging INFRASTRUCTURE around Bedrock (free)
 #
 # To earn the $20 Bedrock credit activity:
@@ -11,13 +11,15 @@
 #
 # ⚠️ aws_bedrock_model_invocation_logging_configuration is a singleton per account/region.
 #    If one already exists outside this Terraform state, import it first:
-#    terraform import aws_bedrock_model_invocation_logging_configuration.main .
+#    terraform import aws_bedrock_model_invocation_logging_configuration.main["this"] .
 
 resource "aws_bedrock_model_invocation_logging_configuration" "main" {
+  for_each = var.features.bedrock_logging ? { this = {} } : {}
+
   logging_config {
     cloudwatch_config {
       log_group_name = aws_cloudwatch_log_group.bedrock.name
-      role_arn       = aws_iam_role.bedrock_logging.arn
+      role_arn       = aws_iam_role.bedrock_logging["this"].arn
     }
 
     text_data_delivery_enabled      = true   # Log text model invocations

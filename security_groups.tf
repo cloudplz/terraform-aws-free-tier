@@ -33,12 +33,13 @@ resource "aws_security_group" "ec2" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = {
-    Name = "${var.project_name}-ec2-sg"
-  }
+  tags = merge(var.tags, {
+    Name    = "${var.project_name}-ec2-sg"
+    Project = var.project_name
+  })
 }
 
-# RDS — PostgreSQL from EC2 SG only
+# RDS / Aurora — PostgreSQL from EC2 SG only (shared by both RDS and Aurora)
 resource "aws_security_group" "rds" {
   name        = "${var.project_name}-rds-sg"
   description = "Allow PostgreSQL from EC2 security group only"
@@ -53,26 +54,28 @@ resource "aws_security_group" "rds" {
     security_groups = [aws_security_group.ec2.id]
   }
 
-  tags = {
-    Name = "${var.project_name}-rds-sg"
-  }
+  tags = merge(var.tags, {
+    Name    = "${var.project_name}-rds-sg"
+    Project = var.project_name
+  })
 }
 
-# ElastiCache — Redis from EC2 SG only
+# ElastiCache — Valkey from EC2 SG only
 resource "aws_security_group" "elasticache" {
   name        = "${var.project_name}-cache-sg"
-  description = "Allow Redis from EC2 security group only"
+  description = "Allow Valkey from EC2 security group only"
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    description     = "Redis from EC2"
+    description     = "Valkey from EC2"
     from_port       = 6379
     to_port         = 6379
     protocol        = "tcp"
     security_groups = [aws_security_group.ec2.id]
   }
 
-  tags = {
-    Name = "${var.project_name}-cache-sg"
-  }
+  tags = merge(var.tags, {
+    Name    = "${var.project_name}-cache-sg"
+    Project = var.project_name
+  })
 }

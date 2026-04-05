@@ -1,7 +1,7 @@
 # IAM — always free. No charges for roles, policies, or instance profiles.
 
 # ────────────────────────────────────────────────
-# EC2 Role
+# EC2 Role (always created)
 # ────────────────────────────────────────────────
 
 resource "aws_iam_role" "ec2" {
@@ -57,7 +57,7 @@ resource "aws_iam_instance_profile" "ec2" {
 }
 
 # ────────────────────────────────────────────────
-# Lambda Execution Role
+# Lambda Execution Role (always created)
 # ────────────────────────────────────────────────
 
 resource "aws_iam_role" "lambda" {
@@ -79,7 +79,7 @@ resource "aws_iam_role_policy_attachment" "lambda_basic" {
 }
 
 # ────────────────────────────────────────────────
-# EventBridge Scheduler Role
+# EventBridge Scheduler Role (always created)
 # ────────────────────────────────────────────────
 
 resource "aws_iam_role" "scheduler" {
@@ -114,10 +114,12 @@ resource "aws_iam_role_policy_attachment" "scheduler_lambda" {
 }
 
 # ────────────────────────────────────────────────
-# Step Functions Role
+# Step Functions Role (gated by features.step_functions)
 # ────────────────────────────────────────────────
 
 resource "aws_iam_role" "sfn" {
+  for_each = var.features.step_functions ? { this = {} } : {}
+
   name = "${var.project_name}-sfn-role"
 
   assume_role_policy = jsonencode({
@@ -131,6 +133,8 @@ resource "aws_iam_role" "sfn" {
 }
 
 resource "aws_iam_policy" "sfn_invoke_lambda" {
+  for_each = var.features.step_functions ? { this = {} } : {}
+
   name = "${var.project_name}-sfn-invoke-lambda"
 
   policy = jsonencode({
@@ -144,15 +148,19 @@ resource "aws_iam_policy" "sfn_invoke_lambda" {
 }
 
 resource "aws_iam_role_policy_attachment" "sfn_lambda" {
-  role       = aws_iam_role.sfn.name
-  policy_arn = aws_iam_policy.sfn_invoke_lambda.arn
+  for_each = var.features.step_functions ? { this = {} } : {}
+
+  role       = aws_iam_role.sfn["this"].name
+  policy_arn = aws_iam_policy.sfn_invoke_lambda["this"].arn
 }
 
 # ────────────────────────────────────────────────
-# Bedrock Logging Role
+# Bedrock Logging Role (gated by features.bedrock_logging)
 # ────────────────────────────────────────────────
 
 resource "aws_iam_role" "bedrock_logging" {
+  for_each = var.features.bedrock_logging ? { this = {} } : {}
+
   name = "${var.project_name}-bedrock-logging-role"
 
   assume_role_policy = jsonencode({
@@ -166,6 +174,8 @@ resource "aws_iam_role" "bedrock_logging" {
 }
 
 resource "aws_iam_policy" "bedrock_logging" {
+  for_each = var.features.bedrock_logging ? { this = {} } : {}
+
   name = "${var.project_name}-bedrock-logging"
 
   policy = jsonencode({
@@ -183,6 +193,8 @@ resource "aws_iam_policy" "bedrock_logging" {
 }
 
 resource "aws_iam_role_policy_attachment" "bedrock_logging" {
-  role       = aws_iam_role.bedrock_logging.name
-  policy_arn = aws_iam_policy.bedrock_logging.arn
+  for_each = var.features.bedrock_logging ? { this = {} } : {}
+
+  role       = aws_iam_role.bedrock_logging["this"].name
+  policy_arn = aws_iam_policy.bedrock_logging["this"].arn
 }
