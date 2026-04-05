@@ -1,0 +1,17 @@
+# AWS region — us-east-1 has the broadest free tier coverage
+aws_region = "us-east-1"
+
+# Project name prefix — applied to all resource names and tags
+project_name = "freetier"
+
+# RDS PostgreSQL master username — avoid reserved words like 'admin' or 'postgres'
+db_username = "dbadmin"
+
+# RDS PostgreSQL master password — minimum 8 characters
+# ⚠️ NEVER commit this value to version control. Use terraform.tfvars (gitignored)
+# or TF_VAR_db_password environment variable instead.
+db_password = "CHANGE_ME_at_least_8_chars"
+
+# Your public IP in CIDR notation for SSH access to the EC2 instance
+# Find yours: curl -s https://checkip.amazonaws.com | awk '{print $1"/32"}'
+my_ip_cidr = "203.0.113.42/32"
