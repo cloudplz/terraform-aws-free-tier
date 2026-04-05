@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - VPC with public/private subnets across configurable availability zones (`az_count`)
 - EC2 t4g.micro instance (Amazon Linux 2023 ARM64) with IMDSv2 enforcement and optional SSH access
-- RDS PostgreSQL db.t4g.micro with Secrets Manager password rotation (feature toggle)
+- RDS PostgreSQL db.t4g.micro with Secrets Manager secret (ephemeral write-only password, never stored in state) (feature toggle)
 - Aurora Serverless v2 PostgreSQL (0.5–4.0 ACUs) with Secrets Manager (feature toggle)
 - ElastiCache Valkey replication group cache.t3.micro with Secrets Manager (feature toggle)
 - S3 bucket with SSE-S3 encryption, public access block, and versioning
@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - SNS topic with optional email subscription
 - EventBridge Scheduler pinging Lambda every 5 minutes (keeps function warm)
 - CloudWatch log groups, metric alarms (EC2 CPU, RDS storage), and configurable retention
-- Step Functions EXPRESS state machine with Lambda integration (feature toggle)
+- Step Functions STANDARD state machine with Lambda integration (feature toggle)
 - Bedrock model invocation logging to CloudWatch (feature toggle)
 - Secrets Manager secret with ephemeral random password (never stored in state)
 - IAM roles and least-privilege policies for EC2, Lambda, EventBridge Scheduler, Step Functions, and Bedrock

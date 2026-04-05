@@ -18,7 +18,7 @@ module "free_tier" {
 
   features = {
     rds             = false # ~$14/mo saved — use Aurora (free) instead
-    aurora          = true  # FREE under Free Plan (up to 4 ACUs + 1 GiB)
+    aurora          = true  # FREE under Paid Plan credits (up to 4 ACUs + 1 GiB)
     elasticache     = false # ~$12.41/mo saved
     cloudfront      = true  # Always Free (1 TB + 10M req/mo)
     cognito         = true  # Always Free (10K MAUs)

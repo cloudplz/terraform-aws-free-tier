@@ -33,12 +33,19 @@ jobs:
 
       - uses: terraform-linters/setup-tflint@v6.2.2
         with:
-          tflint_version: latest
+          tflint_version: "v0.61.0"
 
       - name: TFLint
         run: |
           tflint --init --config=.tflint.hcl
           tflint --config=.tflint.hcl
+
+      - name: Validate examples
+        run: |
+          for dir in examples/*/; do
+            terraform -chdir="$dir" init -backend=false
+            terraform -chdir="$dir" validate
+          done
 
   test:
     name: Test
