@@ -30,7 +30,7 @@ resource "aws_sfn_state_machine" "main" {
     }
   })
 
-  tags = merge(var.tags, {
+  tags = merge(local.common_tags, var.tags, {
     Name = "${var.name}-state-machine"
   })
 }

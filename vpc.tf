@@ -14,7 +14,7 @@ resource "aws_vpc" "main" {
     }
   }
 
-  tags = merge(var.tags, {
+  tags = merge(local.common_tags, var.tags, {
     Name = "${var.name}-vpc"
   })
 }
@@ -23,7 +23,7 @@ resource "aws_vpc" "main" {
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
 
-  tags = merge(var.tags, {
+  tags = merge(local.common_tags, var.tags, {
     Name = "${var.name}-igw"
   })
 }
@@ -38,7 +38,7 @@ resource "aws_subnet" "public" {
 
   map_public_ip_on_launch = true
 
-  tags = merge(var.tags, {
+  tags = merge(local.common_tags, var.tags, {
     Name = "${var.name}-public-${each.value}"
   })
 }
@@ -52,7 +52,7 @@ resource "aws_subnet" "private" {
   cidr_block        = cidrsubnet(var.vpc_cidr, 8, index(local.azs, each.value) + 101)
   availability_zone = each.value
 
-  tags = merge(var.tags, {
+  tags = merge(local.common_tags, var.tags, {
     Name = "${var.name}-private-${each.value}"
   })
 }
@@ -61,7 +61,7 @@ resource "aws_subnet" "private" {
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
 
-  tags = merge(var.tags, {
+  tags = merge(local.common_tags, var.tags, {
     Name = "${var.name}-public-rt"
   })
 }

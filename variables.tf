@@ -1,9 +1,3 @@
-variable "aws_region" {
-  description = "AWS region to deploy all resources into. us-east-1 has the broadest free plan coverage."
-  type        = string
-  default     = "us-east-1"
-}
-
 variable "name" {
   description = "Name prefix applied to every resource and used in default_tags. Keep it short (≤20 chars)."
   type        = string

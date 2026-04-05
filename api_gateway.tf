@@ -14,7 +14,7 @@ resource "aws_apigatewayv2_api" "main" {
     max_age       = 300
   }
 
-  tags = merge(var.tags, {
+  tags = merge(local.common_tags, var.tags, {
     Name = "${var.name}-api"
   })
 }
@@ -24,7 +24,7 @@ resource "aws_apigatewayv2_stage" "default" {
   name        = "$default"
   auto_deploy = true
 
-  tags = merge(var.tags, {
+  tags = merge(local.common_tags, var.tags, {
     Name = "${var.name}-api-stage"
   })
 }

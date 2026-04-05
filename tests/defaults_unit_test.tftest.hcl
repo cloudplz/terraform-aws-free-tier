@@ -138,12 +138,12 @@ run "elasticache_defaults_are_free_tier" {
   command = plan
 
   assert {
-    condition     = aws_elasticache_cluster.valkey["this"].node_type == "cache.t3.micro"
+    condition     = aws_elasticache_replication_group.valkey["this"].node_type == "cache.t3.micro"
     error_message = "ElastiCache node type should be cache.t3.micro (only free-tier eligible)"
   }
 
   assert {
-    condition     = aws_elasticache_cluster.valkey["this"].num_cache_nodes == 1
+    condition     = aws_elasticache_replication_group.valkey["this"].num_cache_clusters == 1
     error_message = "ElastiCache should have exactly 1 node"
   }
 }

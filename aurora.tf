@@ -34,7 +34,7 @@ resource "aws_rds_cluster" "aurora" {
     max_capacity = var.aurora_max_capacity # ⚠️ Free plan cap is 4 ACUs
   }
 
-  tags = merge(var.tags, {
+  tags = merge(local.common_tags, var.tags, {
     Name = "${var.name}-aurora"
   })
 }
@@ -58,7 +58,7 @@ resource "aws_rds_cluster_instance" "aurora" {
   # Enhanced Monitoring incurs CloudWatch Logs cost — disabled for free plan
   monitoring_interval = 0
 
-  tags = merge(var.tags, {
+  tags = merge(local.common_tags, var.tags, {
     Name = "${var.name}-aurora-instance"
   })
 }

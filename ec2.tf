@@ -41,7 +41,7 @@ resource "aws_instance" "web" {
     systemctl start nginx
   EOF
 
-  tags = merge(var.tags, {
+  tags = merge(local.common_tags, var.tags, {
     Name = "${var.name}-web"
   })
 }

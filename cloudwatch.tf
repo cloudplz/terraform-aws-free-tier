@@ -8,7 +8,7 @@ resource "aws_cloudwatch_log_group" "app" {
   name              = "/aws/${var.name}/app"
   retention_in_days = var.log_retention_days
 
-  tags = merge(var.tags, {
+  tags = merge(local.common_tags, var.tags, {
     Name = "${var.name}-app-logs"
   })
 }
@@ -17,7 +17,7 @@ resource "aws_cloudwatch_log_group" "lambda" {
   name              = "/aws/lambda/${var.name}-handler"
   retention_in_days = var.log_retention_days
 
-  tags = merge(var.tags, {
+  tags = merge(local.common_tags, var.tags, {
     Name = "${var.name}-lambda-logs"
   })
 }
@@ -28,7 +28,7 @@ resource "aws_cloudwatch_log_group" "bedrock" {
   name              = "/aws/${var.name}/bedrock"
   retention_in_days = var.log_retention_days
 
-  tags = merge(var.tags, {
+  tags = merge(local.common_tags, var.tags, {
     Name = "${var.name}-bedrock-logs"
   })
 }
@@ -54,7 +54,7 @@ resource "aws_cloudwatch_metric_alarm" "ec2_cpu_high" {
     InstanceId = aws_instance.web.id
   }
 
-  tags = merge(var.tags, {
+  tags = merge(local.common_tags, var.tags, {
     Name = "${var.name}-ec2-cpu-high"
   })
 }
@@ -80,7 +80,7 @@ resource "aws_cloudwatch_metric_alarm" "rds_low_storage" {
     DBInstanceIdentifier = aws_db_instance.postgres["this"].identifier
   }
 
-  tags = merge(var.tags, {
+  tags = merge(local.common_tags, var.tags, {
     Name = "${var.name}-rds-low-storage"
   })
 }

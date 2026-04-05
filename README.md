@@ -3,7 +3,7 @@
 
 Provisions all major AWS free-tier services using direct `resource` blocks (no module wrappers).
 Targets the AWS Free Plan (post-July 2025) in `us-east-1` — $200 in credits + 30+ Always Free
-services. Covers all 5 credit-earning activities for new accounts (+$100 in bonus credits).
+services. Covers all 5 credit-earning activities ($20 each = $100 bonus).
 
 ## Prerequisites
 
@@ -13,8 +13,6 @@ This module requires the **AWS Paid Plan** (not the Free Plan). On the Free Plan
 `CreateDBCluster` for Aurora with a `FreeTierRestrictionError` unless `WithExpressConfiguration`
 is used — a parameter the Terraform AWS provider does not yet support
 ([hashicorp/terraform-provider-aws#47117](https://github.com/hashicorp/terraform-provider-aws/issues/47117)).
-Additionally, express configuration creates a VPC-less cluster incompatible with this module's
-VPC-based architecture.
 
 Switching to the Paid Plan preserves the full $200 in credits and removes all service
 restrictions. If you are on the Free Plan and do not want to switch, disable Aurora:
@@ -26,40 +24,142 @@ features = { aurora = false }
 ### IAM user permissions
 
 The IAM user running Terraform must have IAM permissions (`iam:CreateRole`, `iam:CreatePolicy`,
-etc.). Without them, every IAM resource creation fails, which cascades into failures for EC2,
-Lambda, Step Functions, and Bedrock logging.
-
-The simplest fix is to attach the `IAMFullAccess` managed policy to the user. For a tighter
-scoped policy, the minimum required actions are:
-
-```
-iam:CreateRole, iam:DeleteRole, iam:GetRole, iam:PassRole,
-iam:CreatePolicy, iam:DeletePolicy, iam:GetPolicy, iam:GetPolicyVersion, iam:ListPolicyVersions,
-iam:AttachRolePolicy, iam:DetachRolePolicy, iam:ListAttachedRolePolicies,
-iam:CreateInstanceProfile, iam:DeleteInstanceProfile,
-iam:AddRoleToInstanceProfile, iam:RemoveRoleFromInstanceProfile, iam:GetInstanceProfile,
-iam:TagRole, iam:UntagRole, iam:TagPolicy, iam:UntagPolicy
-```
+etc.). The simplest fix is to attach `IAMFullAccess`. For a tighter policy, see the minimum
+actions list in the [complete example](examples/complete/main.tf).
 
 ## Quick Start
 
-```bash
-cd examples/complete
-terraform init
-terraform apply -var='name=myproject'
+```hcl
+module "free_tier" {
+  source  = "cloudplz/free-tier/aws"
+  version = "~> 1.0"
+
+  name = "myproject"
+}
 ```
 
-Or with email alerts:
-
-```bash
-terraform apply -var='name=myproject' -var='notification_email=you@example.com'
-```
-
-After apply, confirm the SNS email subscription (check your inbox).
+See [examples/](examples/) for complete and minimal configurations.
 
 ## Architecture
 
-See [CLAUDE.md](CLAUDE.md) for the full architecture diagram and cost guardrails.
+```
+                    ┌──────────────────────── AWS Account (us-east-1) ───────────────────────────┐
+                    │                                                                              │
+                    │  ┌──────────────────────── VPC 10.0.0.0/16 ──────────────────────────────┐  │
+                    │  │                                                                        │  │
+                    │  │  ┌── Public Subnet ─┐  ┌── Public Subnet ─┐                          │  │
+                    │  │  │  10.0.1.0/24     │  │  10.0.2.0/24     │                          │  │
+                    │  │  │  AZ-a            │  │  AZ-b            │                          │  │
+  SSH ────────────► │  │  │ ┌─────────────┐  │  │                  │                          │  │
+  HTTP ───────────► │  │  │ │ EC2 t4g     │  │  │                  │                          │  │
+  HTTPS ──────────► │  │  │ │ nginx/psql  │  │  │                  │                          │  │
+                    │  │  │ │ 30GB gp3    │  │  │                  │                          │  │
+                    │  │  │ └──────┬──────┘  │  │                  │                          │  │
+                    │  │  └────────┼─────────┘  └──────────────────┘                          │  │
+                    │  │          │ :5432 + :6379                                              │  │
+                    │  │  ┌── Private Subnet ┐  ┌── Private Subnet ─┐                         │  │
+                    │  │  │  10.0.101.0/24   │  │  10.0.102.0/24    │                         │  │
+                    │  │  │ ┌─────────────┐  │  │                   │                         │  │
+                    │  │  │ │ RDS Postgres│  │  │                   │                         │  │
+                    │  │  │ │ db.t4g.micro│  │  │                   │                         │  │
+                    │  │  │ │ 20GB gp2    │  │  │                   │                         │  │
+                    │  │  │ ├─────────────┤  │  │                   │                         │  │
+                    │  │  │ │ ElastiCache │  │  │                   │                         │  │
+                    │  │  │ │ Valkey 8.0  │  │  │                   │                         │  │
+                    │  │  │ │ t3.micro    │  │  │                   │                         │  │
+                    │  │  │ └─────────────┘  │  │                   │                         │  │
+                    │  │  └──────────────────┘  └───────────────────┘                         │  │
+                    │  │              NO NAT GATEWAY (saves ~$32/month)                       │  │
+                    │  └────────────────────────────────────────────────────────────────────── ┘  │
+                    │                                                                              │
+                    │  ┌──────────┐  ┌──────────────────┐  ┌───────────────────────────────────┐ │
+                    │  │ S3 Bucket│  │ CloudFront (OAC) │  │ DynamoDB                          │ │
+                    │  │ 5GB free │  │ 1TB + 10M req/mo │  │ 25 RCU/WCU PROVISIONED            │ │
+                    │  │ AES256   │  │ PriceClass_100   │  │ pk(S) + sk(S) + TTL               │ │
+                    │  └──────────┘  └──────────────────┘  └───────────────────────────────────┘ │
+                    │                                                                              │
+                    │  ┌──────────────────────────────────────────────────────────────────────┐   │
+                    │  │ Lambda (Node 22.x, 128MB)                                            │   │
+                    │  │  ├── Function URL (public HTTPS — credit activity)                  │   │
+                    │  │  ├── API Gateway HTTP API → Lambda                                  │   │
+                    │  │  ├── EventBridge Scheduler → Lambda (rate: 5min)                    │   │
+                    │  │  └── Step Functions Standard Workflow → Lambda → Succeed            │   │
+                    │  └──────────────────────────────────────────────────────────────────────┘   │
+                    │                                                                              │
+                    │  ┌────────────────────┐  ┌─────────────────────────────────────────────┐   │
+                    │  │ SQS Queue + DLQ    │  │ SNS Topic + email subscription              │   │
+                    │  │ 1M req/mo          │  │ ← CloudWatch alarms wire here               │   │
+                    │  │ maxReceive = 3     │  │ ← Budgets alerts wire here                  │   │
+                    │  └────────────────────┘  └─────────────────────────────────────────────┘   │
+                    │                                                                              │
+                    │  ┌─────────────────────────┐  ┌──────────────────────────────────────────┐ │
+                    │  │ Cognito User Pool        │  │ CloudWatch                               │ │
+                    │  │ 10K MAUs (always free)   │  │  Log groups: app, lambda, bedrock (7d)  │ │
+                    │  │ + hosted domain          │  │  Alarms: EC2 CPU + RDS storage → SNS    │ │
+                    │  └─────────────────────────┘  └──────────────────────────────────────────┘ │
+                    │                                                                              │
+                    │  ┌──────────────────┐  ┌─────────────────────────────────────────────────┐ │
+                    │  │ Budgets (free)   │  │ Bedrock logging config                          │ │
+                    │  │ zero-spend alert │  │  (inference NOT free — enable in console)       │ │
+                    │  └──────────────────┘  └─────────────────────────────────────────────────┘ │
+                    │                                                                              │
+                    │  ┌──────────────────────────────────────────────────────────────────────┐   │
+                    │  │ IAM: EC2 role + Lambda role + Scheduler role + SFN role              │   │
+                    │  │      Bedrock logging role + S3 access policy + instance profile      │   │
+                    │  └──────────────────────────────────────────────────────────────────────┘   │
+                    └──────────────────────────────────────────────────────────────────────────────┘
+```
+
+## Credit-Earning Activities ($20 each = $100 extra)
+
+| Service    | What Terraform Provisions                  | Console Step Required?                      |
+|------------|--------------------------------------------|---------------------------------------------|
+| EC2        | `aws_instance.web` (t4g.micro)             | None — just run `terraform apply`           |
+| RDS        | `aws_db_instance.postgres` (db.t4g.micro)  | None — just run `terraform apply`           |
+| Lambda     | `aws_lambda_function_url.handler`          | None — Function URL is the trigger          |
+| Bedrock    | `aws_bedrock_model_invocation_logging_configuration` | Enable model access + submit 1 prompt in Playground |
+| Budgets    | `aws_budgets_budget.zero_spend`            | None — just run `terraform apply`           |
+
+## Cost Guard Rails
+
+### Always Free Services (no credits consumed)
+
+| Resource       | Setting                           | Always Free Limit                    | What triggers charges                 |
+|----------------|-----------------------------------|--------------------------------------|---------------------------------------|
+| VPC            | No NAT gateway created            | VPCs are free                        | NAT gateway = ~$32/month              |
+| Lambda         | `memory_size = 128`               | 1M requests + 400K GB-sec/mo         | Higher memory reduces free seconds    |
+| DynamoDB       | `PROVISIONED`, 25 RCU/WCU         | 25 RCU + 25 WCU + 25 GB             | On-demand or > 25 incurs charges      |
+| Aurora         | Serverless v2, <= 4 ACUs          | 4 ACUs + 1 GiB storage (March 2026) | > 4 ACUs or > 1 GiB storage          |
+| SQS            | Standard queue (not FIFO)         | 1M requests/month                    | FIFO burns requests faster            |
+| SNS            | Standard topic                    | 1M publishes + 1K email/mo           | High-volume publishing                |
+| CloudFront     | `PriceClass_100`, no WAF          | 1 TB out + 10M requests/mo           | WAF = not free                        |
+| CloudWatch     | 2 alarms, 7d log retention        | 10 alarms + 5 GB logs               | > 10 alarms or long retention         |
+| Step Functions | `STANDARD` type                   | 4,000 state transitions/mo           | EXPRESS type or complex workflows     |
+| EventBridge    | Scheduler, rate(5 min)            | 14M Scheduler invocations/mo         | Rules are a different service         |
+| Cognito        | User Pool, no advanced security   | 10K MAUs (direct/social)             | SAML/OIDC = 50 MAU limit             |
+| Budgets        | 2 notifications (no actions)      | 2 action budgets                     | > 2 action-enabled budgets            |
+| S3             | SSE = AES256 (SSE-S3)             | SSE-S3 is free                       | KMS encryption incurs KMS charges     |
+
+### Credit-Consuming Services (~$39.79/month with defaults)
+
+| Resource       | Setting                           | Rate                                 | Monthly Cost | What increases burn                   |
+|----------------|-----------------------------------|--------------------------------------|-------------|---------------------------------------|
+| EC2            | `t4g.micro`                       | $0.0084/hr                           | ~$6.13      | Larger instance type                  |
+| EBS            | `gp3`, 30 GB                      | $0.08/GB-mo                          | ~$2.40      | Larger volume                         |
+| Public IPv4    | 1 address on EC2                  | $0.005/hr                            | ~$3.65      | Additional public IPs                 |
+| RDS            | `db.t4g.micro`, 20 GB gp2         | $0.016/hr + $0.115/GB-mo            | ~$13.98     | Larger class, more storage            |
+| RDS            | `max_allocated_storage = 20`      | ---                                  | ---         | Higher value enables auto-scaling     |
+| RDS            | `multi_az = false`                | ---                                  | ---         | Multi-AZ doubles cost                 |
+| ElastiCache    | `cache.t3.micro`, 1 node          | $0.017/hr                            | ~$12.41     | Larger type or > 1 node              |
+| Secrets Manager| Up to 3 secrets (NOT free tier)   | $0.40/secret/mo                      | ~$1.20      | More secrets or API calls             |
+
+### Credit Budget at a Glance
+
+| Scenario                             | Monthly Burn | $200 Lasts | $100 Lasts |
+|--------------------------------------|-------------|------------|------------|
+| All defaults (RDS + Aurora)          | ~$39.79     | ~5.0 mo    | ~2.5 mo    |
+| Disable RDS after earning $20 credit | ~$25.41     | ~7.9 mo    | ~3.9 mo    |
+| Disable RDS + ElastiCache            | ~$12.60     | ~15.9 mo   | ~7.9 mo    |
 
 ## Requirements
 
@@ -160,12 +260,9 @@ See [CLAUDE.md](CLAUDE.md) for the full architecture diagram and cost guardrails
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_db_password"></a> [db\_password](#input\_db\_password) | Master password for RDS PostgreSQL and Aurora. Must be ≥8 characters. Never commit to version control. | `string` | n/a | yes |
-| <a name="input_my_ip_cidr"></a> [my\_ip\_cidr](#input\_my\_ip\_cidr) | Your public IP in CIDR notation (e.g., '203.0.113.42/32') for SSH access to the EC2 instance. | `string` | n/a | yes |
-| <a name="input_notification_email"></a> [notification\_email](#input\_notification\_email) | Email address for SNS subscription, Budgets alerts, and CloudWatch alarm actions. | `string` | n/a | yes |
+| <a name="input_name"></a> [name](#input\_name) | Name prefix applied to every resource and used in default\_tags. Keep it short (≤20 chars). | `string` | n/a | yes |
 | <a name="input_aurora_max_capacity"></a> [aurora\_max\_capacity](#input\_aurora\_max\_capacity) | Aurora Serverless v2 maximum ACU capacity. Free plan cap is 4 ACUs — do not exceed. | `number` | `4` | no |
 | <a name="input_aurora_min_capacity"></a> [aurora\_min\_capacity](#input\_aurora\_min\_capacity) | Aurora Serverless v2 minimum ACU capacity. Must be >= 0.5 (platform minimum). | `number` | `0.5` | no |
-| <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS region to deploy all resources into. us-east-1 has the broadest free plan coverage. | `string` | `"us-east-1"` | no |
 | <a name="input_az_count"></a> [az\_count](#input\_az\_count) | Number of availability zones for subnet placement (2 is sufficient for most free-tier workloads). | `number` | `2` | no |
 | <a name="input_db_username"></a> [db\_username](#input\_db\_username) | Master username for RDS PostgreSQL and Aurora. Avoid reserved words like 'admin' or 'postgres'. | `string` | `"dbadmin"` | no |
 | <a name="input_ec2_instance_type"></a> [ec2\_instance\_type](#input\_ec2\_instance\_type) | EC2 instance type. Must be a t-family type to stay within the free plan. | `string` | `"t4g.micro"` | no |
@@ -175,7 +272,8 @@ See [CLAUDE.md](CLAUDE.md) for the full architecture diagram and cost guardrails
 | <a name="input_key_name"></a> [key\_name](#input\_key\_name) | EC2 key pair name for SSH access. Set to null to disable SSH (use SSM Session Manager instead). | `string` | `null` | no |
 | <a name="input_lambda_memory_mb"></a> [lambda\_memory\_mb](#input\_lambda\_memory\_mb) | Lambda function memory in MB. 128 MB maximizes free tier GB-seconds (400K GB-sec/month). | `number` | `128` | no |
 | <a name="input_log_retention_days"></a> [log\_retention\_days](#input\_log\_retention\_days) | CloudWatch log retention in days. Must be a valid CloudWatch retention period value. | `number` | `7` | no |
-| <a name="input_project_name"></a> [project\_name](#input\_project\_name) | Name prefix applied to every resource and used in default\_tags. Keep it short (≤20 chars). | `string` | `"freetier"` | no |
+| <a name="input_my_ip_cidr"></a> [my\_ip\_cidr](#input\_my\_ip\_cidr) | Your public IP in CIDR notation (e.g., '203.0.113.42/32') for SSH access to the EC2 instance. Only needed when key\_name is set. | `string` | `null` | no |
+| <a name="input_notification_email"></a> [notification\_email](#input\_notification\_email) | Email for SNS alerts and Budgets notifications. Set to null to skip email notifications. | `string` | `null` | no |
 | <a name="input_rds_allocated_storage"></a> [rds\_allocated\_storage](#input\_rds\_allocated\_storage) | RDS allocated storage in GB. Free plan covers up to 20 GB. | `number` | `20` | no |
 | <a name="input_rds_instance_class"></a> [rds\_instance\_class](#input\_rds\_instance\_class) | RDS instance class. Must be db.t3.micro or db.t4g.micro for free plan eligibility. | `string` | `"db.t4g.micro"` | no |
 | <a name="input_tags"></a> [tags](#input\_tags) | Additional tags merged onto all resources. | `map(string)` | `{}` | no |

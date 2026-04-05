@@ -3,7 +3,7 @@
 resource "aws_sns_topic" "alerts" {
   name = "${var.name}-alerts"
 
-  tags = merge(var.tags, {
+  tags = merge(local.common_tags, var.tags, {
     Name = "${var.name}-alerts"
   })
 }

@@ -83,8 +83,8 @@ run "elasticache_disabled_removes_resources" {
   }
 
   assert {
-    condition     = length(aws_elasticache_cluster.valkey) == 0
-    error_message = "ElastiCache cluster should not be created when features.elasticache is false"
+    condition     = length(aws_elasticache_replication_group.valkey) == 0
+    error_message = "ElastiCache replication group should not be created when features.elasticache is false"
   }
 
   assert {
@@ -251,7 +251,7 @@ run "all_optional_features_disabled" {
   }
 
   assert {
-    condition     = length(aws_elasticache_cluster.valkey) == 0
+    condition     = length(aws_elasticache_replication_group.valkey) == 0
     error_message = "No ElastiCache should exist when all optional features are disabled"
   }
 }

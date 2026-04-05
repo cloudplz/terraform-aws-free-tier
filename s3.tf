@@ -10,7 +10,7 @@ resource "random_id" "suffix" {
 resource "aws_s3_bucket" "assets" {
   bucket = "${var.name}-assets-${random_id.suffix.hex}"
 
-  tags = merge(var.tags, {
+  tags = merge(local.common_tags, var.tags, {
     Name = "${var.name}-assets"
   })
 }

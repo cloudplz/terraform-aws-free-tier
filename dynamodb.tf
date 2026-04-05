@@ -35,7 +35,7 @@ resource "aws_dynamodb_table" "main" {
     enabled = true
   }
 
-  tags = merge(var.tags, {
+  tags = merge(local.common_tags, var.tags, {
     Name = "${var.name}-table"
   })
 }

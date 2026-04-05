@@ -8,7 +8,7 @@ resource "aws_db_subnet_group" "main" {
   name       = "${var.name}-db-subnet-group"
   subnet_ids = [for s in aws_subnet.private : s.id]
 
-  tags = merge(var.tags, {
+  tags = merge(local.common_tags, var.tags, {
     Name = "${var.name}-db-subnet-group"
   })
 }
@@ -58,7 +58,7 @@ resource "aws_db_instance" "postgres" {
   performance_insights_retention_period = 7
   database_insights_mode                = "standard"
 
-  tags = merge(var.tags, {
+  tags = merge(local.common_tags, var.tags, {
     Name = "${var.name}-postgres"
   })
 }

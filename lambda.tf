@@ -26,7 +26,7 @@ resource "aws_lambda_function" "handler" {
   memory_size = var.lambda_memory_mb # Minimum — maximizes free tier GB-seconds
   timeout     = 10                   # ⚠️ Higher timeout risks consuming free quota
 
-  tags = merge(var.tags, {
+  tags = merge(local.common_tags, var.tags, {
     Name = "${var.name}-handler"
   })
 }

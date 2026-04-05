@@ -36,7 +36,7 @@ resource "aws_security_group" "ec2" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = merge(var.tags, {
+  tags = merge(local.common_tags, var.tags, {
     Name = "${var.name}-ec2-sg"
   })
 }
@@ -57,7 +57,7 @@ resource "aws_security_group" "rds" {
     security_groups = [aws_security_group.ec2.id]
   }
 
-  tags = merge(var.tags, {
+  tags = merge(local.common_tags, var.tags, {
     Name = "${var.name}-rds-sg"
   })
 }
@@ -78,7 +78,7 @@ resource "aws_security_group" "elasticache" {
     security_groups = [aws_security_group.ec2.id]
   }
 
-  tags = merge(var.tags, {
+  tags = merge(local.common_tags, var.tags, {
     Name = "${var.name}-cache-sg"
   })
 }

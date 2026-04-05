@@ -22,7 +22,7 @@ resource "aws_cognito_user_pool" "main" {
     advanced_security_mode = "OFF"
   }
 
-  tags = merge(var.tags, {
+  tags = merge(local.common_tags, var.tags, {
     Name = "${var.name}-user-pool"
   })
 }

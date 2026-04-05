@@ -10,7 +10,7 @@ resource "aws_elasticache_subnet_group" "main" {
   name       = "${var.name}-cache-subnet"
   subnet_ids = [for s in aws_subnet.private : s.id]
 
-  tags = merge(var.tags, {
+  tags = merge(local.common_tags, var.tags, {
     Name = "${var.name}-cache-subnet"
   })
 }
@@ -35,7 +35,7 @@ resource "aws_elasticache_replication_group" "valkey" {
   subnet_group_name  = aws_elasticache_subnet_group.main["this"].name
   security_group_ids = [aws_security_group.elasticache["this"].id]
 
-  tags = merge(var.tags, {
+  tags = merge(local.common_tags, var.tags, {
     Name = "${var.name}-valkey"
   })
 }

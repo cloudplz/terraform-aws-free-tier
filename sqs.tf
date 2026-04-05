@@ -9,7 +9,7 @@ resource "aws_sqs_queue" "dlq" {
   message_retention_seconds = 1209600 # 14 days — max retention for dead letters
   sqs_managed_sse_enabled   = true    # SSE-SQS encryption (free)
 
-  tags = merge(var.tags, {
+  tags = merge(local.common_tags, var.tags, {
     Name = "${var.name}-dlq"
   })
 }
@@ -22,7 +22,7 @@ resource "aws_sqs_queue" "main" {
   message_retention_seconds  = 86400 # 24 hours
   sqs_managed_sse_enabled    = true  # SSE-SQS encryption (free)
 
-  tags = merge(var.tags, {
+  tags = merge(local.common_tags, var.tags, {
     Name = "${var.name}-queue"
   })
 }

@@ -19,7 +19,7 @@ resource "aws_secretsmanager_secret" "rds" {
   name        = "/${var.name}/rds"
   description = "RDS PostgreSQL connection credentials for ${var.name}"
 
-  tags = merge(var.tags, {
+  tags = merge(local.common_tags, var.tags, {
     Name = "${var.name}-rds-secret"
   })
 }
@@ -46,7 +46,7 @@ resource "aws_secretsmanager_secret" "aurora" {
   name        = "/${var.name}/aurora"
   description = "Aurora PostgreSQL connection credentials for ${var.name}"
 
-  tags = merge(var.tags, {
+  tags = merge(local.common_tags, var.tags, {
     Name = "${var.name}-aurora-secret"
   })
 }
@@ -74,7 +74,7 @@ resource "aws_secretsmanager_secret" "elasticache" {
   name        = "/${var.name}/elasticache"
   description = "ElastiCache Valkey connection details for ${var.name}"
 
-  tags = merge(var.tags, {
+  tags = merge(local.common_tags, var.tags, {
     Name = "${var.name}-elasticache-secret"
   })
 }

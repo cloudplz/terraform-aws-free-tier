@@ -31,7 +31,7 @@ rule "terraform_unused_declarations" {
 }
 
 rule "terraform_standard_module_structure" {
-  enabled = false # single-directory layout, not a reusable module
+  enabled = false # per-service files (vpc.tf, rds.tf, etc.) instead of a single main.tf
 }
 
 # Default parameter groups are intentional — free-tier project needs no custom parameters
@@ -39,6 +39,6 @@ rule "aws_db_instance_default_parameter_group" {
   enabled = false
 }
 
-rule "aws_elasticache_cluster_default_parameter_group" {
+rule "aws_elasticache_replication_group_default_parameter_group" {
   enabled = false
 }

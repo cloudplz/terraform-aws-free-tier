@@ -52,7 +52,7 @@ resource "aws_cloudfront_distribution" "assets" {
 
   # ⚠️ Do NOT add web_acl_id — WAF is not free
 
-  tags = merge(var.tags, {
+  tags = merge(local.common_tags, var.tags, {
     Name = "${var.name}-distribution"
   })
 }

@@ -6,6 +6,7 @@
 
 resource "aws_iam_role" "ec2" {
   name = "${var.name}-ec2-role"
+  tags = local.common_tags
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -20,6 +21,7 @@ resource "aws_iam_role" "ec2" {
 resource "aws_iam_policy" "s3_access" {
   name        = "${var.name}-s3-access"
   description = "Allow EC2 to read/write objects in the ${var.name} assets bucket"
+  tags        = local.common_tags
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -54,6 +56,7 @@ resource "aws_iam_role_policy_attachment" "ec2_ssm" {
 resource "aws_iam_instance_profile" "ec2" {
   name = "${var.name}-ec2-profile"
   role = aws_iam_role.ec2.name
+  tags = local.common_tags
 }
 
 # ────────────────────────────────────────────────
@@ -62,6 +65,7 @@ resource "aws_iam_instance_profile" "ec2" {
 
 resource "aws_iam_role" "lambda" {
   name = "${var.name}-lambda-role"
+  tags = local.common_tags
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -84,6 +88,7 @@ resource "aws_iam_role_policy_attachment" "lambda_basic" {
 
 resource "aws_iam_role" "scheduler" {
   name = "${var.name}-scheduler-role"
+  tags = local.common_tags
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -97,6 +102,7 @@ resource "aws_iam_role" "scheduler" {
 
 resource "aws_iam_policy" "scheduler_invoke_lambda" {
   name = "${var.name}-scheduler-invoke-lambda"
+  tags = local.common_tags
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -121,6 +127,7 @@ resource "aws_iam_role" "sfn" {
   for_each = var.features.step_functions ? { this = {} } : {}
 
   name = "${var.name}-sfn-role"
+  tags = local.common_tags
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -136,6 +143,7 @@ resource "aws_iam_policy" "sfn_invoke_lambda" {
   for_each = var.features.step_functions ? { this = {} } : {}
 
   name = "${var.name}-sfn-invoke-lambda"
+  tags = local.common_tags
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -162,6 +170,7 @@ resource "aws_iam_role" "bedrock_logging" {
   for_each = var.features.bedrock_logging ? { this = {} } : {}
 
   name = "${var.name}-bedrock-logging-role"
+  tags = local.common_tags
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -177,6 +186,7 @@ resource "aws_iam_policy" "bedrock_logging" {
   for_each = var.features.bedrock_logging ? { this = {} } : {}
 
   name = "${var.name}-bedrock-logging"
+  tags = local.common_tags
 
   policy = jsonencode({
     Version = "2012-10-17"

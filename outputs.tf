@@ -129,7 +129,7 @@ output "cognito_client_id" {
 output "cognito_domain" {
   description = "Cognito hosted domain URL, or null when features.cognito is false"
   value = try(
-    "https://${one(values(aws_cognito_user_pool_domain.main)).domain}.auth.${var.aws_region}.amazoncognito.com",
+    "https://${one(values(aws_cognito_user_pool_domain.main)).domain}.auth.${local.region}.amazoncognito.com",
     null
   )
 }
