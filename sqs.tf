@@ -6,7 +6,8 @@
 resource "aws_sqs_queue" "dlq" {
   name = "${var.project_name}-dlq"
 
-  message_retention_seconds = 1209600  # 14 days — max retention for dead letters
+  message_retention_seconds  = 1209600  # 14 days — max retention for dead letters
+  sqs_managed_sse_enabled    = true     # SSE-SQS encryption (free)
 
   tags = {
     Name = "${var.project_name}-dlq"
@@ -19,6 +20,7 @@ resource "aws_sqs_queue" "main" {
 
   visibility_timeout_seconds = 30     # Time a consumer has to process a message
   message_retention_seconds  = 86400  # 24 hours
+  sqs_managed_sse_enabled    = true   # SSE-SQS encryption (free)
 
   tags = {
     Name = "${var.project_name}-queue"

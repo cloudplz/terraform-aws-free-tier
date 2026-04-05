@@ -19,3 +19,7 @@ my_ip_cidr = "203.0.113.42/32"
 # Email address for SNS alerts, Budgets notifications, and CloudWatch alarm actions
 # You will receive a subscription confirmation email — click the link to activate
 notification_email = "you@example.com"
+
+# EC2 key pair name for SSH access (optional — SSM Session Manager works without it)
+# Create a key pair first: aws ec2 create-key-pair --key-name freetier --query 'KeyMaterial' --output text > freetier.pem
+# key_name = "freetier"

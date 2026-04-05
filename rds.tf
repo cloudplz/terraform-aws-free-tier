@@ -22,6 +22,7 @@ resource "aws_db_instance" "postgres" {
   allocated_storage     = 20  # Free tier max: 20 GB
   max_allocated_storage = 20  # ⚠️ Prevents auto-scaling past free tier limit
   storage_type          = "gp2"
+  storage_encrypted     = true   # Free with default AWS-managed key
 
   db_name  = "${var.project_name}db"
   username = var.db_username
@@ -32,7 +33,7 @@ resource "aws_db_instance" "postgres" {
   vpc_security_group_ids = [aws_security_group.rds.id]
   parameter_group_name   = "default.postgres17"
 
-  backup_retention_period = 7
+  backup_retention_period = 1     # Minimizes backup storage (free up to DB size)
   backup_window           = "03:00-04:00"
   maintenance_window      = "Mon:04:00-Mon:05:00"
 

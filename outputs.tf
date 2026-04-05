@@ -90,7 +90,7 @@ output "cognito_client_id" {
   value       = aws_cognito_user_pool_client.main.id
 }
 
-output "cognito_hosted_ui_url" {
-  description = "Cognito hosted sign-in UI URL"
+output "cognito_domain" {
+  description = "Cognito hosted domain (configure callback URLs and OAuth flows to use as sign-in UI)"
   value       = "https://${aws_cognito_user_pool_domain.main.domain}.auth.${var.aws_region}.amazoncognito.com"
 }

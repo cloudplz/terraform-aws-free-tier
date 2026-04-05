@@ -28,17 +28,8 @@ resource "aws_cloudfront_distribution" "assets" {
     cached_methods         = ["GET", "HEAD"]
     target_origin_id       = "s3-${aws_s3_bucket.assets.id}"
     viewer_protocol_policy = "redirect-to-https"
-
-    forwarded_values {
-      query_string = false
-      cookies {
-        forward = "none"
-      }
-    }
-
-    min_ttl     = 0
-    default_ttl = 86400
-    max_ttl     = 31536000
+    cache_policy_id        = "658327ea-f89d-4fab-a63d-7e88639e58f6" # CachingOptimized managed policy
+    compress               = true
   }
 
   restrictions {

@@ -1,12 +1,12 @@
 # Security groups — free. No cost concern.
 
-# EC2 — SSH restricted to operator IP, HTTP/HTTPS open to the world
+# EC2 — SSH restricted to operator IP, HTTP open to the world
 resource "aws_security_group" "ec2" {
   name        = "${var.project_name}-ec2-sg"
-  description = "Allow SSH from admin IP, HTTP/HTTPS from anywhere"
+  description = "Allow SSH from admin IP, HTTP from anywhere"
   vpc_id      = aws_vpc.main.id
 
-  # SSH — restricted to operator's IP only
+  # SSH — restricted to operator's IP only (only active when key_name is set)
   ingress {
     description = "SSH from admin IP"
     from_port   = 22
@@ -20,15 +20,6 @@ resource "aws_security_group" "ec2" {
     description = "HTTP from anywhere"
     from_port   = 80
     to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  # HTTPS — open to the world for web serving
-  ingress {
-    description = "HTTPS from anywhere"
-    from_port   = 443
-    to_port     = 443
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -62,15 +53,6 @@ resource "aws_security_group" "rds" {
     security_groups = [aws_security_group.ec2.id]
   }
 
-  # Allow all outbound traffic
-  egress {
-    description = "Allow all outbound"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
   tags = {
     Name = "${var.project_name}-rds-sg"
   }
@@ -88,14 +70,6 @@ resource "aws_security_group" "elasticache" {
     to_port         = 6379
     protocol        = "tcp"
     security_groups = [aws_security_group.ec2.id]
-  }
-
-  egress {
-    description = "Allow all outbound"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
   }
 
   tags = {

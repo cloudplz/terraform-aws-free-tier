@@ -4,7 +4,7 @@ data "archive_file" "lambda_placeholder" {
   output_path = "${path.module}/.build/lambda.zip"
 
   source {
-    content  = "exports.handler = async (e) => ({ statusCode: 200, body: JSON.stringify({ message: 'ok', event: e }) });"
+    content  = "export const handler = async (e) => ({ statusCode: 200, body: JSON.stringify({ message: 'ok', event: e }) });"
     filename = "index.mjs"
   }
 }
@@ -26,14 +26,6 @@ resource "aws_lambda_function" "handler" {
   memory_size = 128  # Minimum — maximizes free tier GB-seconds
   timeout     = 10   # ⚠️ Higher timeout risks consuming free quota
 
-  environment {
-    variables = {
-      DB_HOST = aws_db_instance.postgres.address
-      DB_NAME = aws_db_instance.postgres.db_name
-      DB_USER = var.db_username
-    }
-  }
-
   tags = {
     Name = "${var.project_name}-handler"
   }
@@ -45,4 +37,14 @@ resource "aws_lambda_function" "handler" {
 resource "aws_lambda_function_url" "handler" {
   function_name      = aws_lambda_function.handler.function_name
   authorization_type = "NONE"
+}
+
+# Required for public Function URL access when using Terraform (console adds this automatically)
+# Without this, the Function URL returns 403 even with authorization_type = "NONE"
+resource "aws_lambda_permission" "function_url_public" {
+  statement_id           = "AllowPublicFunctionURL"
+  action                 = "lambda:InvokeFunctionUrl"
+  function_name          = aws_lambda_function.handler.function_name
+  principal              = "*"
+  function_url_auth_type = "NONE"
 }

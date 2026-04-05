@@ -6,11 +6,11 @@
 resource "aws_budgets_budget" "zero_spend" {
   name         = "${var.project_name}-zero-spend"
   budget_type  = "COST"
-  limit_amount = "1"    # Alert at $1 (effectively zero-spend alert)
+  limit_amount = "0.01" # Alert at $0.01 — true zero-spend detection
   limit_unit   = "USD"
   time_unit    = "MONTHLY"
 
-  # Alert at 80% of $1 (actual spend)
+  # Alert at 80% of $0.01 (actual spend)
   notification {
     comparison_operator        = "GREATER_THAN"
     threshold                  = 80
@@ -19,7 +19,7 @@ resource "aws_budgets_budget" "zero_spend" {
     subscriber_email_addresses = [var.notification_email]
   }
 
-  # Alert when forecasted to exceed $1
+  # Alert when forecasted to exceed $0.01
   notification {
     comparison_operator        = "GREATER_THAN"
     threshold                  = 100
