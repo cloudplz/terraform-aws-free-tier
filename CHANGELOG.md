@@ -5,7 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.2] - 2026-04-05
+
+### Changed
+
+- Replace Mermaid diagram with Python-generated PNG using the `diagrams` library (`docs/generate_diagram.py`)
+- Update README to reference `docs/architecture.png` instead of SVG
 
 ## [1.0.1] - 2026-04-05
 
@@ -52,6 +57,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 42 plan-mode unit tests across 4 test files (defaults, variables, features, security)
 - Pre-commit hooks: terraform_fmt, terraform_validate, terraform_docs, terraform_tflint, terraform_trivy
 
-[Unreleased]: https://github.com/cloudplz/terraform-aws-free-tier/compare/v1.0.1...HEAD
+[1.0.2]: https://github.com/cloudplz/terraform-aws-free-tier/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/cloudplz/terraform-aws-free-tier/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/cloudplz/terraform-aws-free-tier/releases/tag/v1.0.0

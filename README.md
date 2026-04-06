@@ -93,7 +93,7 @@ See [examples/complete](examples/complete) and [examples/minimal](examples/minim
 
 ## Architecture
 
-![Architecture](docs/architecture.svg)
+![Architecture](docs/architecture.png)
 
 ## Credit-Earning Activities ($20 each = $100 extra)
 
