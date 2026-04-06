@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-04-05
+
+### Changed
+
+- Replace ASCII architecture diagram with Mermaid-sourced SVG (`docs/architecture.mmd`)
+- Add Terraform Registry badge to README
+
+### Added
+
+- `examples/complete/README.md` and `examples/minimal/README.md` for Terraform Registry display
+- Disclaimer section in README about monitoring AWS charges
+- `Makefile` with `make diagram` target for local SVG rendering
+- `.github/workflows/diagram.yml` to auto-render architecture diagram on changes
+- GitHub repository topics and homepage URL
+
 ## [1.0.0] - 2026-04-05
 
 ### Added
@@ -38,5 +53,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 42 plan-mode unit tests across 4 test files (defaults, variables, features, security)
 - Pre-commit hooks: terraform_fmt, terraform_validate, terraform_docs, terraform_tflint, terraform_trivy
 
-[Unreleased]: https://github.com/cloudplz/terraform-aws-free-tier/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/cloudplz/terraform-aws-free-tier/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/cloudplz/terraform-aws-free-tier/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/cloudplz/terraform-aws-free-tier/releases/tag/v1.0.0

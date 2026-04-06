@@ -1,9 +1,9 @@
 # AWS Free Tier Terraform
 
 [![Latest Release](https://img.shields.io/github/v/release/cloudplz/terraform-aws-free-tier)](https://github.com/cloudplz/terraform-aws-free-tier/releases/latest)
+[![Terraform Registry](https://img.shields.io/badge/Terraform%20Registry-cloudplz%2Ffree--tier%2Faws-blueviolet?logo=terraform)](https://registry.terraform.io/modules/cloudplz/free-tier/aws/latest)
 [![CI](https://img.shields.io/github/actions/workflow/status/cloudplz/terraform-aws-free-tier/ci.yml?branch=main&label=CI)](https://github.com/cloudplz/terraform-aws-free-tier/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Terraform](https://img.shields.io/badge/terraform-%3E%3D1.11-blueviolet)](https://www.terraform.io/)
 
 Spin up 20+ AWS services in a single `terraform apply` — fully optimised for the AWS Free Plan
 (post-July 2025). Get $200 in credits plus 30+ Always Free services, and automatically earn all
@@ -93,73 +93,9 @@ See [examples/complete](examples/complete) and [examples/minimal](examples/minim
 
 ## Architecture
 
-```
-                    ┌──────────────────────── AWS Account (us-east-1) ───────────────────────────┐
-                    │                                                                              │
-                    │  ┌──────────────────────── VPC 10.0.0.0/16 ──────────────────────────────┐  │
-                    │  │                                                                        │  │
-                    │  │  ┌── Public Subnet ─┐  ┌── Public Subnet ─┐                          │  │
-                    │  │  │  10.0.1.0/24     │  │  10.0.2.0/24     │                          │  │
-                    │  │  │  AZ-a            │  │  AZ-b            │                          │  │
-  SSH ────────────► │  │  │ ┌─────────────┐  │  │                  │                          │  │
-  HTTP ───────────► │  │  │ │ EC2 t4g     │  │  │                  │                          │  │
-  HTTPS ──────────► │  │  │ │ nginx/psql  │  │  │                  │                          │  │
-                    │  │  │ │ 30GB gp3    │  │  │                  │                          │  │
-                    │  │  │ └──────┬──────┘  │  │                  │                          │  │
-                    │  │  └────────┼─────────┘  └──────────────────┘                          │  │
-                    │  │          │ :5432 + :6379                                              │  │
-                    │  │  ┌── Private Subnet ┐  ┌── Private Subnet ─┐                         │  │
-                    │  │  │  10.0.101.0/24   │  │  10.0.102.0/24    │                         │  │
-                    │  │  │ ┌─────────────┐  │  │                   │                         │  │
-                    │  │  │ │ RDS Postgres│  │  │                   │                         │  │
-                    │  │  │ │ db.t4g.micro│  │  │                   │                         │  │
-                    │  │  │ │ 20GB gp2    │  │  │                   │                         │  │
-                    │  │  │ ├─────────────┤  │  │                   │                         │  │
-                    │  │  │ │ ElastiCache │  │  │                   │                         │  │
-                    │  │  │ │ Valkey 8.0  │  │  │                   │                         │  │
-                    │  │  │ │ t3.micro    │  │  │                   │                         │  │
-                    │  │  │ └─────────────┘  │  │                   │                         │  │
-                    │  │  └──────────────────┘  └───────────────────┘                         │  │
-                    │  │              NO NAT GATEWAY (saves ~$32/month)                       │  │
-                    │  └────────────────────────────────────────────────────────────────────── ┘  │
-                    │                                                                              │
-                    │  ┌──────────┐  ┌──────────────────┐  ┌───────────────────────────────────┐ │
-                    │  │ S3 Bucket│  │ CloudFront (OAC) │  │ DynamoDB                          │ │
-                    │  │ 5GB free │  │ 1TB + 10M req/mo │  │ 25 RCU/WCU PROVISIONED            │ │
-                    │  │ AES256   │  │ PriceClass_100   │  │ pk(S) + sk(S) + TTL               │ │
-                    │  └──────────┘  └──────────────────┘  └───────────────────────────────────┘ │
-                    │                                                                              │
-                    │  ┌──────────────────────────────────────────────────────────────────────┐   │
-                    │  │ Lambda (Node 22.x, 128MB)                                            │   │
-                    │  │  ├── Function URL (public HTTPS — credit activity)                  │   │
-                    │  │  ├── API Gateway HTTP API → Lambda                                  │   │
-                    │  │  ├── EventBridge Scheduler → Lambda (rate: 5min)                    │   │
-                    │  │  └── Step Functions Standard Workflow → Lambda → Succeed            │   │
-                    │  └──────────────────────────────────────────────────────────────────────┘   │
-                    │                                                                              │
-                    │  ┌────────────────────┐  ┌─────────────────────────────────────────────┐   │
-                    │  │ SQS Queue + DLQ    │  │ SNS Topic + email subscription              │   │
-                    │  │ 1M req/mo          │  │ ← CloudWatch alarms wire here               │   │
-                    │  │ maxReceive = 3     │  │ ← Budgets alerts wire here                  │   │
-                    │  └────────────────────┘  └─────────────────────────────────────────────┘   │
-                    │                                                                              │
-                    │  ┌─────────────────────────┐  ┌──────────────────────────────────────────┐ │
-                    │  │ Cognito User Pool        │  │ CloudWatch                               │ │
-                    │  │ 10K MAUs (always free)   │  │  Log groups: app, lambda, bedrock (7d)  │ │
-                    │  │ + hosted domain          │  │  Alarms: EC2 CPU + RDS storage → SNS    │ │
-                    │  └─────────────────────────┘  └──────────────────────────────────────────┘ │
-                    │                                                                              │
-                    │  ┌──────────────────┐  ┌─────────────────────────────────────────────────┐ │
-                    │  │ Budgets (free)   │  │ Bedrock logging config                          │ │
-                    │  │ zero-spend alert │  │  (inference NOT free — enable in console)       │ │
-                    │  └──────────────────┘  └─────────────────────────────────────────────────┘ │
-                    │                                                                              │
-                    │  ┌──────────────────────────────────────────────────────────────────────┐   │
-                    │  │ IAM: EC2 role + Lambda role + Scheduler role + SFN role              │   │
-                    │  │      Bedrock logging role + S3 access policy + instance profile      │   │
-                    │  └──────────────────────────────────────────────────────────────────────┘   │
-                    └──────────────────────────────────────────────────────────────────────────────┘
-```
+![Architecture](docs/architecture.svg)
+
+*Diagram source: [docs/architecture.mmd](docs/architecture.mmd) — run `make diagram` to regenerate.*
 
 ## Credit-Earning Activities ($20 each = $100 extra)
 
@@ -211,6 +147,14 @@ See [examples/complete](examples/complete) and [examples/minimal](examples/minim
 | All defaults (RDS + Aurora)          | ~$39.79     | ~5.0 mo    | ~2.5 mo    |
 | Disable RDS after earning $20 credit | ~$25.41     | ~7.9 mo    | ~3.9 mo    |
 | Disable RDS + ElastiCache            | ~$12.60     | ~15.9 mo   | ~7.9 mo    |
+
+## Disclaimer
+
+This module provisions real AWS infrastructure designed to stay within Free Tier limits.
+However, **you are responsible for monitoring your own AWS charges**. AWS Free Tier terms,
+eligible services, and credit amounts may change at any time. Always verify current terms
+on the [AWS Free Tier page](https://aws.amazon.com/free/). The authors of this module are
+not liable for any charges incurred.
 
 <!-- BEGIN_TF_DOCS -->
 ## Requirements

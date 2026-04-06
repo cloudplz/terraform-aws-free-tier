@@ -1,0 +1,30 @@
+name: Render Diagram
+
+on:
+  push:
+    branches: [main]
+    paths: ["docs/architecture.mmd"]
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  render:
+    name: Render
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - name: Install mermaid-cli
+        run: npm install -g @mermaid-js/mermaid-cli
+
+      - name: Render SVG
+        run: mmdc -i docs/architecture.mmd -o docs/architecture.svg -t neutral -b transparent
+
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "docs: regenerate architecture diagram"
+          file_pattern: docs/architecture.svg
