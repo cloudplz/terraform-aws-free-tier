@@ -19,7 +19,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `examples/complete/README.md` and `examples/minimal/README.md` for Terraform Registry display
 - Disclaimer section in README about monitoring AWS charges
 - `Makefile` with `make diagram` target for local SVG rendering
-- `.github/workflows/diagram.yml` to auto-render architecture diagram on changes
 - GitHub repository topics and homepage URL
 
 ## [1.0.0] - 2026-04-05

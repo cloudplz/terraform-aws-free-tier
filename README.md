@@ -95,8 +95,6 @@ See [examples/complete](examples/complete) and [examples/minimal](examples/minim
 
 ![Architecture](docs/architecture.svg)
 
-*Diagram source: [docs/architecture.mmd](docs/architecture.mmd) — run `make diagram` to regenerate.*
-
 ## Credit-Earning Activities ($20 each = $100 extra)
 
 | Service    | What Terraform Provisions                  | Console Step Required?                      |

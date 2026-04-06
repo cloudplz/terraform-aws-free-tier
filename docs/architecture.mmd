@@ -1,47 +1,46 @@
-flowchart TB
+flowchart TD
     Internet(("Internet"))
 
-    subgraph AWS["AWS Account (us-east-1)"]
-        subgraph VPC["VPC 10.0.0.0/16 — No NAT Gateway"]
-            subgraph PubSub["Public Subnets (AZ-a, AZ-b)"]
-                EC2["EC2 t4g.micro<br/>nginx / psql / 30 GB gp3"]
-            end
-            subgraph PrivSub["Private Subnets (AZ-a, AZ-b)"]
-                RDS["RDS PostgreSQL<br/>db.t4g.micro / 20 GB"]
-                Aurora["Aurora Serverless v2<br/>0.5–4 ACUs"]
-                Cache["ElastiCache Valkey<br/>cache.t3.micro"]
-            end
+    subgraph VPC["VPC 10.0.0.0/16 — No NAT Gateway"]
+        direction LR
+        subgraph pub["Public Subnets (AZ-a, AZ-b)"]
+            EC2["EC2 t4g.micro<br/>30 GB gp3"]
         end
-
-        subgraph StorageCDN["Storage & CDN"]
-            S3["S3 Bucket<br/>5 GB / AES256"]
-            CF["CloudFront (OAC)<br/>1 TB + 10M req/mo"]
-            DDB["DynamoDB<br/>25 RCU/WCU Provisioned"]
+        subgraph priv["Private Subnets (AZ-a, AZ-b)"]
+            RDS["RDS PostgreSQL<br/>db.t4g.micro"]
+            Aurora["Aurora Serverless v2"]
+            Cache["ElastiCache Valkey<br/>cache.t3.micro"]
         end
-
-        subgraph Compute["Serverless Compute"]
-            Lambda["Lambda<br/>Node 22.x / 128 MB"]
-            FnURL["Function URL (HTTPS)"]
-            APIGW["API Gateway HTTP API"]
-            EB["EventBridge Scheduler<br/>rate: 5 min"]
-            SFN["Step Functions Standard"]
-        end
-
-        subgraph Msg["Messaging"]
-            SQS["SQS + DLQ<br/>1M req/mo"]
-            SNS["SNS Topic<br/>+ email subscription"]
-        end
-
-        subgraph ObsAuth["Observability & Identity"]
-            CW["CloudWatch<br/>Logs (7d) + Alarms"]
-            Cognito["Cognito User Pool<br/>10K MAUs"]
-            Budget["Budgets<br/>zero-spend alert"]
-            Bedrock["Bedrock Logging"]
-        end
-
-        IAM["IAM Roles & Policies"]
-        Secrets["Secrets Manager"]
     end
+
+    subgraph compute["Serverless Compute"]
+        Lambda["Lambda (Node 22.x, 128 MB)"]
+        APIGW["API Gateway HTTP API"]
+        FnURL["Function URL (HTTPS)"]
+        EB["EventBridge Scheduler"]
+        SFN["Step Functions Standard"]
+    end
+
+    subgraph storage["Storage & CDN"]
+        S3["S3 Bucket (AES256)"]
+        CF["CloudFront (OAC)"]
+        DDB["DynamoDB (25 RCU/WCU)"]
+    end
+
+    subgraph messaging["Messaging & Alerts"]
+        SQS["SQS + DLQ"]
+        SNS["SNS Topic"]
+    end
+
+    subgraph ops["Observability & Identity"]
+        CW["CloudWatch Logs + Alarms"]
+        Cognito["Cognito (10K MAUs)"]
+        Budget["Budgets"]
+        Bedrock["Bedrock Logging"]
+    end
+
+    IAM["IAM Roles & Policies"]
+    Secrets["Secrets Manager"]
 
     Internet -->|"SSH / HTTP / HTTPS"| EC2
     EC2 -->|":5432"| RDS
