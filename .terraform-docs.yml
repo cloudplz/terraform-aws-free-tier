@@ -1,28 +1,12 @@
 formatter: markdown table
 
-header-from: header.md
-
 sections:
   show:
-    - header
     - requirements
     - providers
     - resources
     - inputs
     - outputs
-
-content: |-
-  {{ .Header }}
-
-  {{ .Requirements }}
-
-  {{ .Providers }}
-
-  {{ .Resources }}
-
-  {{ .Inputs }}
-
-  {{ .Outputs }}
 
 output:
   file: README.md

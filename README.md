@@ -1,33 +1,33 @@
-<!-- BEGIN_TF_DOCS -->
 # AWS Free Tier Terraform
 
-Provisions all major AWS free-tier services using direct `resource` blocks (no module wrappers).
-Targets the AWS Free Plan (post-July 2025) in `us-east-1` — $200 in credits + 30+ Always Free
-services. Covers all 5 credit-earning activities ($20 each = $100 bonus).
+[![Latest Release](https://img.shields.io/github/v/release/cloudplz/terraform-aws-free-tier)](https://github.com/cloudplz/terraform-aws-free-tier/releases/latest)
+[![CI](https://img.shields.io/github/actions/workflow/status/cloudplz/terraform-aws-free-tier/ci.yml?branch=main&label=CI)](https://github.com/cloudplz/terraform-aws-free-tier/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Terraform](https://img.shields.io/badge/terraform-%3E%3D1.11-blueviolet)](https://www.terraform.io/)
+
+Spin up 20+ AWS services in a single `terraform apply` — fully optimised for the AWS Free Plan
+(post-July 2025). Get $200 in credits plus 30+ Always Free services, and automatically earn all
+5 credit-earning activities ($20 each = $100 bonus).
 
 ## Prerequisites
 
-### AWS account plan
+> [!IMPORTANT]
+> **This module requires the AWS Paid Plan.** On the Free Plan, AWS blocks `CreateDBCluster` for
+> Aurora (`FreeTierRestrictionError`) due to a [missing provider parameter](https://github.com/hashicorp/terraform-provider-aws/issues/47117).
+> Switching to the Paid Plan preserves your full $200 in credits and removes all service
+> restrictions. If you cannot switch, disable Aurora:
+> ```hcl
+> features = { aurora = false }
+> ```
 
-This module requires the **AWS Paid Plan** (not the Free Plan). On the Free Plan, AWS blocks
-`CreateDBCluster` for Aurora with a `FreeTierRestrictionError` unless `WithExpressConfiguration`
-is used — a parameter the Terraform AWS provider does not yet support
-([hashicorp/terraform-provider-aws#47117](https://github.com/hashicorp/terraform-provider-aws/issues/47117)).
+> [!NOTE]
+> The IAM user running Terraform must have permission to manage IAM resources (`iam:CreateRole`,
+> `iam:CreatePolicy`, etc.). The simplest option is `IAMFullAccess`. For a least-privilege policy,
+> see the [complete example](examples/complete/main.tf).
 
-Switching to the Paid Plan preserves the full $200 in credits and removes all service
-restrictions. If you are on the Free Plan and do not want to switch, disable Aurora:
+## Usage
 
-```hcl
-features = { aurora = false }
-```
-
-### IAM user permissions
-
-The IAM user running Terraform must have IAM permissions (`iam:CreateRole`, `iam:CreatePolicy`,
-etc.). The simplest fix is to attach `IAMFullAccess`. For a tighter policy, see the minimum
-actions list in the [complete example](examples/complete/main.tf).
-
-## Quick Start
+**Minimal — just a name required:**
 
 ```hcl
 module "free_tier" {
@@ -38,7 +38,58 @@ module "free_tier" {
 }
 ```
 
-See [examples/](examples/) for complete and minimal configurations.
+**Cost-optimised — disable RDS and ElastiCache to stretch credits to ~16 months:**
+
+```hcl
+module "free_tier" {
+  source  = "cloudplz/free-tier/aws"
+  version = "~> 1.0"
+
+  name = "myproject"
+
+  features = {
+    rds         = false # saves ~$14/mo
+    elasticache = false # saves ~$12/mo
+  }
+}
+```
+
+**With SSH access and budget alerts:**
+
+```hcl
+module "free_tier" {
+  source  = "cloudplz/free-tier/aws"
+  version = "~> 1.0"
+
+  name               = "myproject"
+  key_name           = "my-key-pair"
+  my_ip_cidr         = "203.0.113.42/32"
+  notification_email = "you@example.com"
+}
+```
+
+**All feature toggles:**
+
+```hcl
+module "free_tier" {
+  source  = "cloudplz/free-tier/aws"
+  version = "~> 1.0"
+
+  name = "myproject"
+
+  features = {
+    rds             = true  # RDS PostgreSQL db.t4g.micro
+    aurora          = true  # Aurora Serverless v2 (requires Paid Plan)
+    elasticache     = true  # ElastiCache Valkey cache.t3.micro
+    cloudfront      = true  # CloudFront + S3 origin (Always Free)
+    cognito         = true  # Cognito User Pool (Always Free)
+    step_functions  = true  # Step Functions Standard (Always Free)
+    bedrock_logging = true  # Bedrock invocation logging (inference not free)
+  }
+}
+```
+
+See [examples/complete](examples/complete) and [examples/minimal](examples/minimal) for ready-to-apply configurations.
 
 ## Architecture
 
@@ -161,11 +212,12 @@ See [examples/](examples/) for complete and minimal configurations.
 | Disable RDS after earning $20 credit | ~$25.41     | ~7.9 mo    | ~3.9 mo    |
 | Disable RDS + ElastiCache            | ~$12.60     | ~15.9 mo   | ~7.9 mo    |
 
+<!-- BEGIN_TF_DOCS -->
 ## Requirements
 
 | Name | Version |
 |------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | ~> 1.11 |
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.11, < 2.0.0 |
 | <a name="requirement_archive"></a> [archive](#requirement\_archive) | ~> 2.4 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | ~> 6.0 |
 | <a name="requirement_random"></a> [random](#requirement\_random) | ~> 3.0 |
