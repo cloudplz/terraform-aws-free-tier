@@ -105,6 +105,11 @@ See [examples/complete](examples/complete) and [examples/minimal](examples/minim
 | Bedrock    | `aws_bedrock_model_invocation_logging_configuration` | Enable model access + submit 1 prompt in Playground |
 | Budgets    | `aws_budgets_budget.zero_spend`            | None — just run `terraform apply`           |
 
+> [!TIP]
+> The EC2 instance ignores AMI drift — it deploys with the latest Amazon Linux 2023 AMI on initial
+> creation but won't be replaced when AWS publishes a new image. To intentionally update the AMI,
+> run `terraform apply -replace="module.free_tier.aws_instance.web"`.
+
 ## Cost Guard Rails
 
 ### Always Free Services (no credits consumed)
