@@ -41,6 +41,10 @@ resource "aws_instance" "web" {
     systemctl start nginx
   EOF
 
+  lifecycle {
+    ignore_changes = [ami]
+  }
+
   tags = merge(local.common_tags, var.tags, {
     Name = "${var.name}-web"
   })
