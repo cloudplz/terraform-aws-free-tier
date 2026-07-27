@@ -78,12 +78,16 @@ module "free_tier" {
   name = "myproject"
 
   features = {
+    compute         = true  # EC2 t4g.micro + security group + IAM profile
+    storage         = true  # S3 assets bucket + DynamoDB table
+    messaging       = true  # SNS alerts topic + SQS queue/DLQ
+    serverless      = true  # Lambda + Function URL + API Gateway + EventBridge Scheduler
     rds             = true  # RDS PostgreSQL db.t4g.micro
     aurora          = true  # Aurora Serverless v2 (requires Paid Plan)
     elasticache     = true  # ElastiCache Valkey cache.t3.micro
-    cloudfront      = true  # CloudFront + S3 origin (Always Free)
+    cloudfront      = true  # CloudFront + S3 origin (Always Free; requires storage)
     cognito         = true  # Cognito User Pool (Always Free)
-    step_functions  = true  # Step Functions Standard (Always Free)
+    step_functions  = true  # Step Functions Standard (Always Free; requires serverless)
     bedrock_logging = true  # Bedrock invocation logging (inference not free)
   }
 }
@@ -267,7 +271,7 @@ not liable for any charges incurred.
 | <a name="input_ec2_instance_type"></a> [ec2\_instance\_type](#input\_ec2\_instance\_type) | EC2 instance type. Must be a t-family type to stay within the free plan. | `string` | `"t4g.micro"` | no |
 | <a name="input_ec2_volume_size_gb"></a> [ec2\_volume\_size\_gb](#input\_ec2\_volume\_size\_gb) | Root EBS volume size in GB. Free plan covers up to 30 GB total EBS storage. | `number` | `30` | no |
 | <a name="input_elasticache_node_type"></a> [elasticache\_node\_type](#input\_elasticache\_node\_type) | ElastiCache node type. Must be cache.t3.micro — the only free-plan eligible ElastiCache node type. | `string` | `"cache.t3.micro"` | no |
-| <a name="input_features"></a> [features](#input\_features) | Toggle optional AWS services on or off. Omit entirely to enable all defaults.<br/>Core services (VPC, EC2, Lambda, S3, DynamoDB, SQS, SNS, IAM, CloudWatch,<br/>Budgets) are always created and cannot be disabled. | <pre>object({<br/>    rds             = optional(bool, true)<br/>    aurora          = optional(bool, true)<br/>    elasticache     = optional(bool, true)<br/>    cloudfront      = optional(bool, true)<br/>    cognito         = optional(bool, true)<br/>    step_functions  = optional(bool, true)<br/>    bedrock_logging = optional(bool, true)<br/>  })</pre> | `{}` | no |
+| <a name="input_features"></a> [features](#input\_features) | Toggle AWS service groups on or off. Omit entirely to enable all defaults.<br/>Only VPC/networking, the app CloudWatch log group, and the zero-spend<br/>budget are always created; every other service can be disabled here. | <pre>object({<br/>    compute         = optional(bool, true)<br/>    storage         = optional(bool, true)<br/>    messaging       = optional(bool, true)<br/>    serverless      = optional(bool, true)<br/>    rds             = optional(bool, true)<br/>    aurora          = optional(bool, true)<br/>    elasticache     = optional(bool, true)<br/>    cloudfront      = optional(bool, true)<br/>    cognito         = optional(bool, true)<br/>    step_functions  = optional(bool, true)<br/>    bedrock_logging = optional(bool, true)<br/>  })</pre> | `{}` | no |
 | <a name="input_key_name"></a> [key\_name](#input\_key\_name) | EC2 key pair name for SSH access. Set to null to disable SSH (use SSM Session Manager instead). | `string` | `null` | no |
 | <a name="input_lambda_memory_mb"></a> [lambda\_memory\_mb](#input\_lambda\_memory\_mb) | Lambda function memory in MB. 128 MB maximizes free tier GB-seconds (400K GB-sec/month). | `number` | `128` | no |
 | <a name="input_log_retention_days"></a> [log\_retention\_days](#input\_log\_retention\_days) | CloudWatch log retention in days. Must be a valid CloudWatch retention period value. | `number` | `7` | no |
@@ -282,7 +286,7 @@ not liable for any charges incurred.
 
 | Name | Description |
 |------|-------------|
-| <a name="output_api_gateway_url"></a> [api\_gateway\_url](#output\_api\_gateway\_url) | API Gateway HTTP API invoke URL |
+| <a name="output_api_gateway_url"></a> [api\_gateway\_url](#output\_api\_gateway\_url) | API Gateway HTTP API invoke URL, or null when features.serverless is false |
 | <a name="output_aurora_endpoint"></a> [aurora\_endpoint](#output\_aurora\_endpoint) | Aurora PostgreSQL cluster writer endpoint, or null when features.aurora is false |
 | <a name="output_aurora_reader_endpoint"></a> [aurora\_reader\_endpoint](#output\_aurora\_reader\_endpoint) | Aurora PostgreSQL cluster reader endpoint, or null when features.aurora is false |
 | <a name="output_aurora_secret_arn"></a> [aurora\_secret\_arn](#output\_aurora\_secret\_arn) | ARN of the Aurora Secrets Manager secret, or null when features.aurora is false |
@@ -290,19 +294,19 @@ not liable for any charges incurred.
 | <a name="output_cognito_client_id"></a> [cognito\_client\_id](#output\_cognito\_client\_id) | ID of the Cognito App Client, or null when features.cognito is false |
 | <a name="output_cognito_domain"></a> [cognito\_domain](#output\_cognito\_domain) | Cognito hosted domain URL, or null when features.cognito is false |
 | <a name="output_cognito_user_pool_id"></a> [cognito\_user\_pool\_id](#output\_cognito\_user\_pool\_id) | ID of the Cognito User Pool, or null when features.cognito is false |
-| <a name="output_dynamodb_table_name"></a> [dynamodb\_table\_name](#output\_dynamodb\_table\_name) | Name of the DynamoDB table |
-| <a name="output_ec2_public_dns"></a> [ec2\_public\_dns](#output\_ec2\_public\_dns) | Public DNS hostname of the EC2 instance |
-| <a name="output_ec2_public_ip"></a> [ec2\_public\_ip](#output\_ec2\_public\_ip) | Public IP address of the EC2 instance |
+| <a name="output_dynamodb_table_name"></a> [dynamodb\_table\_name](#output\_dynamodb\_table\_name) | Name of the DynamoDB table, or null when features.storage is false |
+| <a name="output_ec2_public_dns"></a> [ec2\_public\_dns](#output\_ec2\_public\_dns) | Public DNS hostname of the EC2 instance, or null when features.compute is false |
+| <a name="output_ec2_public_ip"></a> [ec2\_public\_ip](#output\_ec2\_public\_ip) | Public IP address of the EC2 instance, or null when features.compute is false |
 | <a name="output_elasticache_endpoint"></a> [elasticache\_endpoint](#output\_elasticache\_endpoint) | ElastiCache Valkey endpoint (host:port), or null when features.elasticache is false |
 | <a name="output_elasticache_secret_arn"></a> [elasticache\_secret\_arn](#output\_elasticache\_secret\_arn) | ARN of the ElastiCache Secrets Manager secret, or null when features.elasticache is false |
-| <a name="output_lambda_function_name"></a> [lambda\_function\_name](#output\_lambda\_function\_name) | Name of the Lambda function |
-| <a name="output_lambda_function_url"></a> [lambda\_function\_url](#output\_lambda\_function\_url) | Lambda Function URL — public HTTPS endpoint (credit activity) |
+| <a name="output_lambda_function_name"></a> [lambda\_function\_name](#output\_lambda\_function\_name) | Name of the Lambda function, or null when features.serverless is false |
+| <a name="output_lambda_function_url"></a> [lambda\_function\_url](#output\_lambda\_function\_url) | Lambda Function URL — public HTTPS endpoint (credit activity), or null when features.serverless is false |
 | <a name="output_rds_db_name"></a> [rds\_db\_name](#output\_rds\_db\_name) | Name of the RDS database, or null when features.rds is false |
 | <a name="output_rds_endpoint"></a> [rds\_endpoint](#output\_rds\_endpoint) | RDS PostgreSQL endpoint (host:port), or null when features.rds is false |
 | <a name="output_rds_secret_arn"></a> [rds\_secret\_arn](#output\_rds\_secret\_arn) | ARN of the RDS Secrets Manager secret, or null when features.rds is false |
-| <a name="output_s3_bucket_name"></a> [s3\_bucket\_name](#output\_s3\_bucket\_name) | Name of the S3 assets bucket |
-| <a name="output_sns_topic_arn"></a> [sns\_topic\_arn](#output\_sns\_topic\_arn) | ARN of the SNS alerts topic |
-| <a name="output_sqs_queue_url"></a> [sqs\_queue\_url](#output\_sqs\_queue\_url) | URL of the SQS main queue |
+| <a name="output_s3_bucket_name"></a> [s3\_bucket\_name](#output\_s3\_bucket\_name) | Name of the S3 assets bucket, or null when features.storage is false |
+| <a name="output_sns_topic_arn"></a> [sns\_topic\_arn](#output\_sns\_topic\_arn) | ARN of the SNS alerts topic, or null when features.messaging is false |
+| <a name="output_sqs_queue_url"></a> [sqs\_queue\_url](#output\_sqs\_queue\_url) | URL of the SQS main queue, or null when features.messaging is false |
 | <a name="output_step_functions_arn"></a> [step\_functions\_arn](#output\_step\_functions\_arn) | ARN of the Step Functions state machine, or null when features.step\_functions is false |
 | <a name="output_valkey_engine_version"></a> [valkey\_engine\_version](#output\_valkey\_engine\_version) | Valkey engine version deployed to ElastiCache, or null when features.elasticache is false |
 <!-- END_TF_DOCS -->

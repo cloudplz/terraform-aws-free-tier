@@ -14,6 +14,8 @@ resource "aws_cloudwatch_log_group" "app" {
 }
 
 resource "aws_cloudwatch_log_group" "lambda" {
+  for_each = var.features.serverless ? { this = {} } : {}
+
   name              = "/aws/lambda/${var.name}-handler"
   retention_in_days = var.log_retention_days
 
@@ -36,8 +38,11 @@ resource "aws_cloudwatch_log_group" "bedrock" {
 # ─── Alarms (2 of 10 free slots) ──────────────────────────────────────────────
 # ⚠️ More than 10 alarms will incur charges
 
-# EC2 CPU > 80% for 10 minutes — detects runaway processes (always created; EC2 is core)
+# EC2 CPU > 80% for 10 minutes — detects runaway processes
+# Only created when features.compute is enabled
 resource "aws_cloudwatch_metric_alarm" "ec2_cpu_high" {
+  for_each = var.features.compute ? { this = {} } : {}
+
   alarm_name          = "${var.name}-ec2-cpu-high"
   alarm_description   = "EC2 CPU utilization exceeds 80% for 10 minutes"
   comparison_operator = "GreaterThanThreshold"
@@ -48,10 +53,10 @@ resource "aws_cloudwatch_metric_alarm" "ec2_cpu_high" {
   statistic           = "Average"
   threshold           = 80
   treat_missing_data  = "notBreaching"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  alarm_actions       = var.features.messaging ? [aws_sns_topic.alerts["this"].arn] : []
 
   dimensions = {
-    InstanceId = aws_instance.web.id
+    InstanceId = aws_instance.web["this"].id
   }
 
   tags = merge(local.common_tags, var.tags, {
@@ -74,7 +79,7 @@ resource "aws_cloudwatch_metric_alarm" "rds_low_storage" {
   statistic           = "Average"
   threshold           = 2147483648 # 2 GB in bytes
   treat_missing_data  = "notBreaching"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  alarm_actions       = var.features.messaging ? [aws_sns_topic.alerts["this"].arn] : []
 
   dimensions = {
     DBInstanceIdentifier = aws_db_instance.postgres["this"].identifier

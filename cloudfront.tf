@@ -26,15 +26,15 @@ resource "aws_cloudfront_distribution" "assets" {
   price_class         = "PriceClass_100" # US, Canada, Europe — cheaper beyond free tier
 
   origin {
-    domain_name              = aws_s3_bucket.assets.bucket_regional_domain_name
-    origin_id                = "s3-${aws_s3_bucket.assets.id}"
+    domain_name              = aws_s3_bucket.assets["this"].bucket_regional_domain_name
+    origin_id                = "s3-${aws_s3_bucket.assets["this"].id}"
     origin_access_control_id = aws_cloudfront_origin_access_control.assets["this"].id
   }
 
   default_cache_behavior {
     allowed_methods        = ["GET", "HEAD"]
     cached_methods         = ["GET", "HEAD"]
-    target_origin_id       = "s3-${aws_s3_bucket.assets.id}"
+    target_origin_id       = "s3-${aws_s3_bucket.assets["this"].id}"
     viewer_protocol_policy = "redirect-to-https"
     cache_policy_id        = data.aws_cloudfront_cache_policy.caching_optimized.id
     compress               = true
@@ -61,7 +61,7 @@ resource "aws_cloudfront_distribution" "assets" {
 resource "aws_s3_bucket_policy" "cloudfront_access" {
   for_each = var.features.cloudfront ? { this = {} } : {}
 
-  bucket = aws_s3_bucket.assets.id
+  bucket = aws_s3_bucket.assets["this"].id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -70,7 +70,7 @@ resource "aws_s3_bucket_policy" "cloudfront_access" {
       Effect    = "Allow"
       Principal = { Service = "cloudfront.amazonaws.com" }
       Action    = "s3:GetObject"
-      Resource  = "${aws_s3_bucket.assets.arn}/*"
+      Resource  = "${aws_s3_bucket.assets["this"].arn}/*"
       Condition = {
         StringEquals = {
           "AWS:SourceArn" = aws_cloudfront_distribution.assets["this"].arn

@@ -1,13 +1,13 @@
-# ─── Compute (always created) ─────────────────────────────────────────────────
+# ─── Compute ──────────────────────────────────────────────────────────────────
 
 output "ec2_public_ip" {
-  description = "Public IP address of the EC2 instance"
-  value       = aws_instance.web.public_ip
+  description = "Public IP address of the EC2 instance, or null when features.compute is false"
+  value       = try(one(values(aws_instance.web)).public_ip, null)
 }
 
 output "ec2_public_dns" {
-  description = "Public DNS hostname of the EC2 instance"
-  value       = aws_instance.web.public_dns
+  description = "Public DNS hostname of the EC2 instance, or null when features.compute is false"
+  value       = try(one(values(aws_instance.web)).public_dns, null)
 }
 
 # ─── Database ─────────────────────────────────────────────────────────────────
@@ -63,11 +63,11 @@ output "valkey_engine_version" {
   value       = nonsensitive(try(one(values(aws_elasticache_replication_group.valkey)).engine_version_actual, null))
 }
 
-# ─── Storage (always created) ─────────────────────────────────────────────────
+# ─── Storage ──────────────────────────────────────────────────────────────────
 
 output "s3_bucket_name" {
-  description = "Name of the S3 assets bucket"
-  value       = aws_s3_bucket.assets.id
+  description = "Name of the S3 assets bucket, or null when features.storage is false"
+  value       = try(one(values(aws_s3_bucket.assets)).id, null)
 }
 
 output "cloudfront_domain" {
@@ -76,37 +76,37 @@ output "cloudfront_domain" {
 }
 
 output "dynamodb_table_name" {
-  description = "Name of the DynamoDB table"
-  value       = aws_dynamodb_table.main.id
+  description = "Name of the DynamoDB table, or null when features.storage is false"
+  value       = try(one(values(aws_dynamodb_table.main)).id, null)
 }
 
-# ─── Serverless (always created) ──────────────────────────────────────────────
+# ─── Serverless ───────────────────────────────────────────────────────────────
 
 output "lambda_function_name" {
-  description = "Name of the Lambda function"
-  value       = aws_lambda_function.handler.function_name
+  description = "Name of the Lambda function, or null when features.serverless is false"
+  value       = try(one(values(aws_lambda_function.handler)).function_name, null)
 }
 
 output "lambda_function_url" {
-  description = "Lambda Function URL — public HTTPS endpoint (credit activity)"
-  value       = aws_lambda_function_url.handler.function_url
+  description = "Lambda Function URL — public HTTPS endpoint (credit activity), or null when features.serverless is false"
+  value       = try(one(values(aws_lambda_function_url.handler)).function_url, null)
 }
 
 output "api_gateway_url" {
-  description = "API Gateway HTTP API invoke URL"
-  value       = aws_apigatewayv2_stage.default.invoke_url
+  description = "API Gateway HTTP API invoke URL, or null when features.serverless is false"
+  value       = try(one(values(aws_apigatewayv2_stage.default)).invoke_url, null)
 }
 
-# ─── Messaging / Events (always created) ──────────────────────────────────────
+# ─── Messaging / Events ───────────────────────────────────────────────────────
 
 output "sqs_queue_url" {
-  description = "URL of the SQS main queue"
-  value       = aws_sqs_queue.main.url
+  description = "URL of the SQS main queue, or null when features.messaging is false"
+  value       = try(one(values(aws_sqs_queue.main)).url, null)
 }
 
 output "sns_topic_arn" {
-  description = "ARN of the SNS alerts topic"
-  value       = aws_sns_topic.alerts.arn
+  description = "ARN of the SNS alerts topic, or null when features.messaging is false"
+  value       = try(one(values(aws_sns_topic.alerts)).arn, null)
 }
 
 output "step_functions_arn" {

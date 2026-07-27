@@ -2,6 +2,8 @@
 
 # EC2 — SSH restricted to operator IP, HTTP open to the world
 resource "aws_security_group" "ec2" {
+  for_each = var.features.compute ? { this = {} } : {}
+
   name        = "${var.name}-ec2-sg"
   description = "Allow SSH from admin IP, HTTP from anywhere"
   vpc_id      = aws_vpc.main.id
@@ -49,12 +51,16 @@ resource "aws_security_group" "rds" {
   description = "Allow PostgreSQL from EC2 security group only"
   vpc_id      = aws_vpc.main.id
 
-  ingress {
-    description     = "PostgreSQL from EC2"
-    from_port       = 5432
-    to_port         = 5432
-    protocol        = "tcp"
-    security_groups = [aws_security_group.ec2.id]
+  # PostgreSQL from EC2 — only when the EC2 security group exists
+  dynamic "ingress" {
+    for_each = var.features.compute ? [1] : []
+    content {
+      description     = "PostgreSQL from EC2"
+      from_port       = 5432
+      to_port         = 5432
+      protocol        = "tcp"
+      security_groups = [aws_security_group.ec2["this"].id]
+    }
   }
 
   tags = merge(local.common_tags, var.tags, {
@@ -70,12 +76,16 @@ resource "aws_security_group" "elasticache" {
   description = "Allow Valkey from EC2 security group only"
   vpc_id      = aws_vpc.main.id
 
-  ingress {
-    description     = "Valkey from EC2"
-    from_port       = 6379
-    to_port         = 6379
-    protocol        = "tcp"
-    security_groups = [aws_security_group.ec2.id]
+  # Valkey from EC2 — only when the EC2 security group exists
+  dynamic "ingress" {
+    for_each = var.features.compute ? [1] : []
+    content {
+      description     = "Valkey from EC2"
+      from_port       = 6379
+      to_port         = 6379
+      protocol        = "tcp"
+      security_groups = [aws_security_group.ec2["this"].id]
+    }
   }
 
   tags = merge(local.common_tags, var.tags, {

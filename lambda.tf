@@ -15,11 +15,13 @@ data "archive_file" "lambda_placeholder" {
 # ⚠️ timeout > 10 risks consuming free quota on runaway invocations
 
 resource "aws_lambda_function" "handler" {
+  for_each = var.features.serverless ? { this = {} } : {}
+
   function_name    = "${var.name}-handler"
   description      = "Placeholder Lambda function for ${var.name}"
   handler          = "index.handler"
   runtime          = "nodejs22.x"
-  role             = aws_iam_role.lambda.arn
+  role             = aws_iam_role.lambda["this"].arn
   filename         = data.archive_file.lambda_placeholder.output_path
   source_code_hash = data.archive_file.lambda_placeholder.output_base64sha256
 
@@ -35,16 +37,20 @@ resource "aws_lambda_function" "handler" {
 # Provides a dedicated HTTPS endpoint without needing API Gateway
 # authorization_type = "NONE" makes it publicly invocable — demo/study use only
 resource "aws_lambda_function_url" "handler" {
-  function_name      = aws_lambda_function.handler.function_name
+  for_each = var.features.serverless ? { this = {} } : {}
+
+  function_name      = aws_lambda_function.handler["this"].function_name
   authorization_type = "NONE"
 }
 
 # Required for public Function URL access when using Terraform (console adds this automatically)
 # Without this, the Function URL returns 403 even with authorization_type = "NONE"
 resource "aws_lambda_permission" "function_url_public" {
+  for_each = var.features.serverless ? { this = {} } : {}
+
   statement_id           = "AllowPublicFunctionURL"
   action                 = "lambda:InvokeFunctionUrl"
-  function_name          = aws_lambda_function.handler.function_name
+  function_name          = aws_lambda_function.handler["this"].function_name
   principal              = "*"
   function_url_auth_type = "NONE"
 }

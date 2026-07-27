@@ -23,22 +23,22 @@ run "ec2_defaults_are_free_tier" {
   command = plan
 
   assert {
-    condition     = aws_instance.web.instance_type == "t4g.micro"
+    condition     = aws_instance.web["this"].instance_type == "t4g.micro"
     error_message = "Default EC2 instance type should be t4g.micro"
   }
 
   assert {
-    condition     = aws_instance.web.root_block_device[0].volume_size == 30
+    condition     = aws_instance.web["this"].root_block_device[0].volume_size == 30
     error_message = "Default EBS volume should be 30 GB (free-tier max)"
   }
 
   assert {
-    condition     = aws_instance.web.root_block_device[0].volume_type == "gp3"
+    condition     = aws_instance.web["this"].root_block_device[0].volume_type == "gp3"
     error_message = "EBS volume type should be gp3"
   }
 
   assert {
-    condition     = aws_instance.web.credit_specification[0].cpu_credits == "standard"
+    condition     = aws_instance.web["this"].credit_specification[0].cpu_credits == "standard"
     error_message = "CPU credits should be 'standard' to prevent surplus charges"
   }
 }
@@ -80,17 +80,17 @@ run "lambda_defaults_are_free_tier" {
   command = plan
 
   assert {
-    condition     = aws_lambda_function.handler.memory_size == 128
+    condition     = aws_lambda_function.handler["this"].memory_size == 128
     error_message = "Default Lambda memory should be 128 MB to maximize free GB-seconds"
   }
 
   assert {
-    condition     = aws_lambda_function.handler.runtime == "nodejs22.x"
+    condition     = aws_lambda_function.handler["this"].runtime == "nodejs22.x"
     error_message = "Lambda runtime should be nodejs22.x"
   }
 
   assert {
-    condition     = aws_lambda_function.handler.timeout == 10
+    condition     = aws_lambda_function.handler["this"].timeout == 10
     error_message = "Lambda timeout should be 10 seconds"
   }
 }
@@ -101,17 +101,17 @@ run "dynamodb_defaults_are_free_tier" {
   command = plan
 
   assert {
-    condition     = aws_dynamodb_table.main.billing_mode == "PROVISIONED"
+    condition     = aws_dynamodb_table.main["this"].billing_mode == "PROVISIONED"
     error_message = "DynamoDB billing mode should be PROVISIONED (on-demand is NOT free-tier)"
   }
 
   assert {
-    condition     = aws_dynamodb_table.main.read_capacity == 25
+    condition     = aws_dynamodb_table.main["this"].read_capacity == 25
     error_message = "DynamoDB read capacity should be 25 (always-free max)"
   }
 
   assert {
-    condition     = aws_dynamodb_table.main.write_capacity == 25
+    condition     = aws_dynamodb_table.main["this"].write_capacity == 25
     error_message = "DynamoDB write capacity should be 25 (always-free max)"
   }
 }
@@ -185,7 +185,7 @@ run "plans_with_only_required_variables" {
   }
 
   assert {
-    condition     = aws_instance.web.instance_type == "t4g.micro"
+    condition     = aws_instance.web["this"].instance_type == "t4g.micro"
     error_message = "Module should plan successfully with only name provided"
   }
 }

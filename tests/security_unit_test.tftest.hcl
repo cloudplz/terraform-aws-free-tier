@@ -23,7 +23,7 @@ run "ec2_enforces_imdsv2" {
   command = plan
 
   assert {
-    condition     = aws_instance.web.metadata_options[0].http_tokens == "required"
+    condition     = aws_instance.web["this"].metadata_options[0].http_tokens == "required"
     error_message = "EC2 must enforce IMDSv2 (http_tokens = required)"
   }
 }
@@ -32,7 +32,7 @@ run "ec2_ebs_is_encrypted" {
   command = plan
 
   assert {
-    condition     = aws_instance.web.root_block_device[0].encrypted == true
+    condition     = aws_instance.web["this"].root_block_device[0].encrypted == true
     error_message = "EC2 root EBS volume must be encrypted"
   }
 }
@@ -45,7 +45,7 @@ run "ec2_no_ssh_without_key" {
   }
 
   assert {
-    condition     = length([for rule in aws_security_group.ec2.ingress : rule if rule.from_port == 22 && rule.to_port == 22]) == 0
+    condition     = length([for rule in aws_security_group.ec2["this"].ingress : rule if rule.from_port == 22 && rule.to_port == 22]) == 0
     error_message = "EC2 security group should not expose SSH when key_name is null"
   }
 }
@@ -59,7 +59,7 @@ run "ec2_no_ssh_without_ip" {
   }
 
   assert {
-    condition     = length([for rule in aws_security_group.ec2.ingress : rule if rule.from_port == 22 && rule.to_port == 22]) == 0
+    condition     = length([for rule in aws_security_group.ec2["this"].ingress : rule if rule.from_port == 22 && rule.to_port == 22]) == 0
     error_message = "EC2 security group should not expose SSH when my_ip_cidr is null"
   }
 }
@@ -70,22 +70,22 @@ run "s3_blocks_all_public_access" {
   command = plan
 
   assert {
-    condition     = aws_s3_bucket_public_access_block.assets.block_public_acls == true
+    condition     = aws_s3_bucket_public_access_block.assets["this"].block_public_acls == true
     error_message = "S3 must block public ACLs"
   }
 
   assert {
-    condition     = aws_s3_bucket_public_access_block.assets.block_public_policy == true
+    condition     = aws_s3_bucket_public_access_block.assets["this"].block_public_policy == true
     error_message = "S3 must block public policies"
   }
 
   assert {
-    condition     = aws_s3_bucket_public_access_block.assets.ignore_public_acls == true
+    condition     = aws_s3_bucket_public_access_block.assets["this"].ignore_public_acls == true
     error_message = "S3 must ignore public ACLs"
   }
 
   assert {
-    condition     = aws_s3_bucket_public_access_block.assets.restrict_public_buckets == true
+    condition     = aws_s3_bucket_public_access_block.assets["this"].restrict_public_buckets == true
     error_message = "S3 must restrict public buckets"
   }
 }
@@ -95,7 +95,7 @@ run "s3_encryption_is_sse_s3" {
 
   assert {
     condition = alltrue([
-      for rule in aws_s3_bucket_server_side_encryption_configuration.assets.rule : alltrue([
+      for rule in aws_s3_bucket_server_side_encryption_configuration.assets["this"].rule : alltrue([
         for default in rule.apply_server_side_encryption_by_default : default.sse_algorithm == "AES256"
       ])
     ])
@@ -141,12 +141,12 @@ run "sqs_queues_are_encrypted" {
   command = plan
 
   assert {
-    condition     = aws_sqs_queue.main.sqs_managed_sse_enabled == true
+    condition     = aws_sqs_queue.main["this"].sqs_managed_sse_enabled == true
     error_message = "Main SQS queue must have SSE enabled"
   }
 
   assert {
-    condition     = aws_sqs_queue.dlq.sqs_managed_sse_enabled == true
+    condition     = aws_sqs_queue.dlq["this"].sqs_managed_sse_enabled == true
     error_message = "DLQ must have SSE enabled"
   }
 }
@@ -157,7 +157,7 @@ run "dynamodb_encryption_enabled" {
   command = plan
 
   assert {
-    condition     = aws_dynamodb_table.main.server_side_encryption[0].enabled == true
+    condition     = aws_dynamodb_table.main["this"].server_side_encryption[0].enabled == true
     error_message = "DynamoDB must have server-side encryption enabled"
   }
 }

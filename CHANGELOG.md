@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-07-27
+
+### Added
+
+- New `features` toggles for previously always-created service groups: `compute` (EC2 + security group + IAM profile + CPU alarm), `storage` (S3 assets bucket + DynamoDB table), `messaging` (SNS alerts topic + SQS queue/DLQ), and `serverless` (Lambda + Function URL + API Gateway + EventBridge Scheduler + related IAM/log group). All default to `true`, so existing configurations are unaffected
+- Cross-feature validations: `features.cloudfront` requires `features.storage`; `features.step_functions` requires `features.serverless`
+- `moved.tf` with `moved` blocks for all resources that gained `for_each` — existing state upgrades to v1.1.0 without destroy/recreate
+
+### Changed
+
+- Zero-spend budget notifications are now created only when a subscriber exists (`notification_email` or the SNS topic); budget still applies cleanly with `features.messaging = false`
+- CloudWatch alarms omit `alarm_actions` when `features.messaging = false`
+- RDS/ElastiCache security groups allow ingress from the EC2 security group only when `features.compute = true`
+
 ## [1.0.3] - 2026-04-11
 
 ### Fixed
@@ -63,6 +77,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 42 plan-mode unit tests across 4 test files (defaults, variables, features, security)
 - Pre-commit hooks: terraform_fmt, terraform_validate, terraform_docs, terraform_tflint, terraform_trivy
 
+[1.1.0]: https://github.com/cloudplz/terraform-aws-free-tier/compare/v1.0.3...v1.1.0
 [1.0.3]: https://github.com/cloudplz/terraform-aws-free-tier/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/cloudplz/terraform-aws-free-tier/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/cloudplz/terraform-aws-free-tier/compare/v1.0.0...v1.0.1

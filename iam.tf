@@ -1,10 +1,12 @@
 # IAM — always free. No charges for roles, policies, or instance profiles.
 
 # ────────────────────────────────────────────────
-# EC2 Role (always created)
+# EC2 Role (gated by features.compute)
 # ────────────────────────────────────────────────
 
 resource "aws_iam_role" "ec2" {
+  for_each = var.features.compute ? { this = {} } : {}
+
   name = "${var.name}-ec2-role"
   tags = local.common_tags
 
@@ -19,6 +21,8 @@ resource "aws_iam_role" "ec2" {
 }
 
 resource "aws_iam_policy" "s3_access" {
+  for_each = var.features.compute && var.features.storage ? { this = {} } : {}
+
   name        = "${var.name}-s3-access"
   description = "Allow EC2 to read/write objects in the ${var.name} assets bucket"
   tags        = local.common_tags
@@ -30,40 +34,48 @@ resource "aws_iam_policy" "s3_access" {
         Sid      = "S3BucketList"
         Effect   = "Allow"
         Action   = ["s3:ListBucket"]
-        Resource = aws_s3_bucket.assets.arn
+        Resource = aws_s3_bucket.assets["this"].arn
       },
       {
         Sid      = "S3ObjectAccess"
         Effect   = "Allow"
         Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
-        Resource = "${aws_s3_bucket.assets.arn}/*"
+        Resource = "${aws_s3_bucket.assets["this"].arn}/*"
       }
     ]
   })
 }
 
 resource "aws_iam_role_policy_attachment" "ec2_s3" {
-  role       = aws_iam_role.ec2.name
-  policy_arn = aws_iam_policy.s3_access.arn
+  for_each = var.features.compute && var.features.storage ? { this = {} } : {}
+
+  role       = aws_iam_role.ec2["this"].name
+  policy_arn = aws_iam_policy.s3_access["this"].arn
 }
 
 # SSM Session Manager — enables shell access without SSH keys or open ports
 resource "aws_iam_role_policy_attachment" "ec2_ssm" {
-  role       = aws_iam_role.ec2.name
+  for_each = var.features.compute ? { this = {} } : {}
+
+  role       = aws_iam_role.ec2["this"].name
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
 resource "aws_iam_instance_profile" "ec2" {
+  for_each = var.features.compute ? { this = {} } : {}
+
   name = "${var.name}-ec2-profile"
-  role = aws_iam_role.ec2.name
+  role = aws_iam_role.ec2["this"].name
   tags = local.common_tags
 }
 
 # ────────────────────────────────────────────────
-# Lambda Execution Role (always created)
+# Lambda Execution Role (gated by features.serverless)
 # ────────────────────────────────────────────────
 
 resource "aws_iam_role" "lambda" {
+  for_each = var.features.serverless ? { this = {} } : {}
+
   name = "${var.name}-lambda-role"
   tags = local.common_tags
 
@@ -78,15 +90,19 @@ resource "aws_iam_role" "lambda" {
 }
 
 resource "aws_iam_role_policy_attachment" "lambda_basic" {
-  role       = aws_iam_role.lambda.name
+  for_each = var.features.serverless ? { this = {} } : {}
+
+  role       = aws_iam_role.lambda["this"].name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
 # ────────────────────────────────────────────────
-# EventBridge Scheduler Role (always created)
+# EventBridge Scheduler Role (gated by features.serverless)
 # ────────────────────────────────────────────────
 
 resource "aws_iam_role" "scheduler" {
+  for_each = var.features.serverless ? { this = {} } : {}
+
   name = "${var.name}-scheduler-role"
   tags = local.common_tags
 
@@ -101,6 +117,8 @@ resource "aws_iam_role" "scheduler" {
 }
 
 resource "aws_iam_policy" "scheduler_invoke_lambda" {
+  for_each = var.features.serverless ? { this = {} } : {}
+
   name = "${var.name}-scheduler-invoke-lambda"
   tags = local.common_tags
 
@@ -109,14 +127,16 @@ resource "aws_iam_policy" "scheduler_invoke_lambda" {
     Statement = [{
       Effect   = "Allow"
       Action   = ["lambda:InvokeFunction"]
-      Resource = aws_lambda_function.handler.arn
+      Resource = aws_lambda_function.handler["this"].arn
     }]
   })
 }
 
 resource "aws_iam_role_policy_attachment" "scheduler_lambda" {
-  role       = aws_iam_role.scheduler.name
-  policy_arn = aws_iam_policy.scheduler_invoke_lambda.arn
+  for_each = var.features.serverless ? { this = {} } : {}
+
+  role       = aws_iam_role.scheduler["this"].name
+  policy_arn = aws_iam_policy.scheduler_invoke_lambda["this"].arn
 }
 
 # ────────────────────────────────────────────────
@@ -150,7 +170,7 @@ resource "aws_iam_policy" "sfn_invoke_lambda" {
     Statement = [{
       Effect   = "Allow"
       Action   = ["lambda:InvokeFunction"]
-      Resource = aws_lambda_function.handler.arn
+      Resource = aws_lambda_function.handler["this"].arn
     }]
   })
 }

@@ -3,6 +3,8 @@
 # ⚠️ REST API (V1) also qualifies for the free tier but HTTP API is recommended
 
 resource "aws_apigatewayv2_api" "main" {
+  for_each = var.features.serverless ? { this = {} } : {}
+
   name          = "${var.name}-api"
   protocol_type = "HTTP"
   description   = "HTTP API for ${var.name}"
@@ -20,7 +22,9 @@ resource "aws_apigatewayv2_api" "main" {
 }
 
 resource "aws_apigatewayv2_stage" "default" {
-  api_id      = aws_apigatewayv2_api.main.id
+  for_each = var.features.serverless ? { this = {} } : {}
+
+  api_id      = aws_apigatewayv2_api.main["this"].id
   name        = "$default"
   auto_deploy = true
 
@@ -30,24 +34,30 @@ resource "aws_apigatewayv2_stage" "default" {
 }
 
 resource "aws_apigatewayv2_integration" "lambda" {
-  api_id                 = aws_apigatewayv2_api.main.id
+  for_each = var.features.serverless ? { this = {} } : {}
+
+  api_id                 = aws_apigatewayv2_api.main["this"].id
   integration_type       = "AWS_PROXY"
   integration_method     = "POST"
-  integration_uri        = aws_lambda_function.handler.invoke_arn
+  integration_uri        = aws_lambda_function.handler["this"].invoke_arn
   payload_format_version = "2.0"
 }
 
 resource "aws_apigatewayv2_route" "default" {
-  api_id    = aws_apigatewayv2_api.main.id
+  for_each = var.features.serverless ? { this = {} } : {}
+
+  api_id    = aws_apigatewayv2_api.main["this"].id
   route_key = "GET /"
-  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda["this"].id}"
 }
 
 # Resource-based policy allowing API Gateway to invoke the Lambda function
 resource "aws_lambda_permission" "api_gateway" {
+  for_each = var.features.serverless ? { this = {} } : {}
+
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.handler.function_name
+  function_name = aws_lambda_function.handler["this"].function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.main.execution_arn}/*/*"
+  source_arn    = "${aws_apigatewayv2_api.main["this"].execution_arn}/*/*"
 }

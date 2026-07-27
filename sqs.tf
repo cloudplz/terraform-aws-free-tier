@@ -4,6 +4,8 @@
 
 # Dead Letter Queue — receives messages that fail processing 3 times
 resource "aws_sqs_queue" "dlq" {
+  for_each = var.features.messaging ? { this = {} } : {}
+
   name = "${var.name}-dlq"
 
   message_retention_seconds = 1209600 # 14 days — max retention for dead letters
@@ -16,6 +18,8 @@ resource "aws_sqs_queue" "dlq" {
 
 # Main queue with DLQ redrive
 resource "aws_sqs_queue" "main" {
+  for_each = var.features.messaging ? { this = {} } : {}
+
   name = "${var.name}-queue"
 
   visibility_timeout_seconds = 30    # Time a consumer has to process a message
@@ -29,10 +33,12 @@ resource "aws_sqs_queue" "main" {
 
 # Redrive policy: send to DLQ after 3 failed receive attempts
 resource "aws_sqs_queue_redrive_policy" "main" {
-  queue_url = aws_sqs_queue.main.id
+  for_each = var.features.messaging ? { this = {} } : {}
+
+  queue_url = aws_sqs_queue.main["this"].id
 
   redrive_policy = jsonencode({
-    deadLetterTargetArn = aws_sqs_queue.dlq.arn
+    deadLetterTargetArn = aws_sqs_queue.dlq["this"].arn
     maxReceiveCount     = 3
   })
 }

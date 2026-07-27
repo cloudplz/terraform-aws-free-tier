@@ -18,7 +18,7 @@ resource "aws_sfn_state_machine" "main" {
         Type     = "Task"
         Resource = "arn:aws:states:::lambda:invoke"
         Parameters = {
-          FunctionName = aws_lambda_function.handler.arn
+          FunctionName = aws_lambda_function.handler["this"].arn
           "Payload.$"  = "$"
         }
         ResultPath = "$.lambdaResult"

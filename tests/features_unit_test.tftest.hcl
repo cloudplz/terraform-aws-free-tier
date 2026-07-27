@@ -225,17 +225,17 @@ run "all_optional_features_disabled" {
   }
 
   assert {
-    condition     = aws_lambda_function.handler.runtime == "nodejs22.x"
+    condition     = aws_lambda_function.handler["this"].runtime == "nodejs22.x"
     error_message = "Lambda should still be created with all optional features disabled"
   }
 
   assert {
-    condition     = aws_dynamodb_table.main.billing_mode == "PROVISIONED"
+    condition     = aws_dynamodb_table.main["this"].billing_mode == "PROVISIONED"
     error_message = "DynamoDB should still be created with all optional features disabled"
   }
 
   assert {
-    condition     = aws_s3_bucket.assets.bucket != ""
+    condition     = aws_s3_bucket.assets["this"].bucket != ""
     error_message = "S3 bucket should still be created with all optional features disabled"
   }
 
@@ -254,4 +254,163 @@ run "all_optional_features_disabled" {
     condition     = length(aws_elasticache_replication_group.valkey) == 0
     error_message = "No ElastiCache should exist when all optional features are disabled"
   }
+}
+
+# ─── Disable Compute ─────────────────────────────────────────────────────────
+
+run "compute_disabled_removes_resources" {
+  command = plan
+
+  variables {
+    features = {
+      compute = false
+    }
+  }
+
+  assert {
+    condition     = length(aws_instance.web) == 0
+    error_message = "EC2 instance should not be created when features.compute is false"
+  }
+
+  assert {
+    condition     = length(aws_security_group.ec2) == 0
+    error_message = "EC2 security group should not be created when features.compute is false"
+  }
+
+  assert {
+    condition     = length(aws_iam_role.ec2) == 0
+    error_message = "EC2 IAM role should not be created when features.compute is false"
+  }
+
+  assert {
+    condition     = length(aws_cloudwatch_metric_alarm.ec2_cpu_high) == 0
+    error_message = "EC2 CPU alarm should not be created when features.compute is false"
+  }
+}
+
+# ─── Disable Storage ─────────────────────────────────────────────────────────
+
+run "storage_disabled_removes_resources" {
+  command = plan
+
+  variables {
+    features = {
+      storage    = false
+      cloudfront = false # CloudFront requires storage
+    }
+  }
+
+  assert {
+    condition     = length(aws_s3_bucket.assets) == 0
+    error_message = "S3 bucket should not be created when features.storage is false"
+  }
+
+  assert {
+    condition     = length(aws_dynamodb_table.main) == 0
+    error_message = "DynamoDB table should not be created when features.storage is false"
+  }
+
+  assert {
+    condition     = length(aws_iam_policy.s3_access) == 0
+    error_message = "S3 access policy should not be created when features.storage is false"
+  }
+}
+
+# ─── Disable Messaging ───────────────────────────────────────────────────────
+
+run "messaging_disabled_removes_resources" {
+  command = plan
+
+  variables {
+    features = {
+      messaging = false
+    }
+  }
+
+  assert {
+    condition     = length(aws_sns_topic.alerts) == 0
+    error_message = "SNS topic should not be created when features.messaging is false"
+  }
+
+  assert {
+    condition     = length(aws_sqs_queue.main) == 0
+    error_message = "SQS main queue should not be created when features.messaging is false"
+  }
+
+  assert {
+    condition     = length(aws_sqs_queue.dlq) == 0
+    error_message = "SQS DLQ should not be created when features.messaging is false"
+  }
+
+  # Budget still plans; notifications fall back to email only
+  assert {
+    condition     = aws_budgets_budget.zero_spend.budget_type == "COST"
+    error_message = "Zero-spend budget should still be created when features.messaging is false"
+  }
+}
+
+# ─── Disable Serverless ──────────────────────────────────────────────────────
+
+run "serverless_disabled_removes_resources" {
+  command = plan
+
+  variables {
+    features = {
+      serverless     = false
+      step_functions = false # Step Functions requires serverless
+    }
+  }
+
+  assert {
+    condition     = length(aws_lambda_function.handler) == 0
+    error_message = "Lambda function should not be created when features.serverless is false"
+  }
+
+  assert {
+    condition     = length(aws_apigatewayv2_api.main) == 0
+    error_message = "API Gateway should not be created when features.serverless is false"
+  }
+
+  assert {
+    condition     = length(aws_scheduler_schedule.lambda_ping) == 0
+    error_message = "EventBridge schedule should not be created when features.serverless is false"
+  }
+
+  assert {
+    condition     = length(aws_iam_role.lambda) == 0
+    error_message = "Lambda IAM role should not be created when features.serverless is false"
+  }
+
+  assert {
+    condition     = length(aws_cloudwatch_log_group.lambda) == 0
+    error_message = "Lambda log group should not be created when features.serverless is false"
+  }
+}
+
+# ─── Cross-feature validation ────────────────────────────────────────────────
+
+run "step_functions_requires_serverless" {
+  command = plan
+
+  variables {
+    features = {
+      serverless     = false
+      step_functions = true
+    }
+  }
+
+  expect_failures = [var.features]
+}
+
+run "cloudfront_requires_storage" {
+  command = plan
+
+  variables {
+    features = {
+      storage    = false
+      cloudfront = true
+    }
+  }
+
+  expect_failures = [var.features]
 }

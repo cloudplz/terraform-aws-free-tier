@@ -4,6 +4,8 @@
 # ⚠️ Storing more than 25 GB of data will incur charges
 
 resource "aws_dynamodb_table" "main" {
+  for_each = var.features.storage ? { this = {} } : {}
+
   name         = "${var.name}-table"
   billing_mode = "PROVISIONED" # ⚠️ PAY_PER_REQUEST (on-demand) is NOT free tier
 

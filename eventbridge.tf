@@ -4,6 +4,8 @@
 #    NOT aws_cloudwatch_event_rule (EventBridge Rules) — they are different services.
 
 resource "aws_scheduler_schedule" "lambda_ping" {
+  for_each = var.features.serverless ? { this = {} } : {}
+
   name        = "${var.name}-lambda-ping"
   description = "Invokes the Lambda handler every 5 minutes"
 
@@ -14,8 +16,8 @@ resource "aws_scheduler_schedule" "lambda_ping" {
   schedule_expression = "rate(5 minutes)"
 
   target {
-    arn      = aws_lambda_function.handler.arn
-    role_arn = aws_iam_role.scheduler.arn
+    arn      = aws_lambda_function.handler["this"].arn
+    role_arn = aws_iam_role.scheduler["this"].arn
 
     input = jsonencode({ source = "eventbridge-scheduler" })
   }

@@ -182,16 +182,20 @@ variable "tags" {
 }
 
 # ─── Feature toggles ─────────────────────────────────────────────────────────
-# Core services (VPC, EC2, Lambda, S3, DynamoDB, SQS, SNS, IAM, CloudWatch,
-# Budgets) are always created and cannot be disabled.
+# Every service group can be disabled. Only the VPC/networking stack, the app
+# CloudWatch log group, and the zero-spend budget are always created.
 
 variable "features" {
   description = <<-EOT
-    Toggle optional AWS services on or off. Omit entirely to enable all defaults.
-    Core services (VPC, EC2, Lambda, S3, DynamoDB, SQS, SNS, IAM, CloudWatch,
-    Budgets) are always created and cannot be disabled.
+    Toggle AWS service groups on or off. Omit entirely to enable all defaults.
+    Only VPC/networking, the app CloudWatch log group, and the zero-spend
+    budget are always created; every other service can be disabled here.
   EOT
   type = object({
+    compute         = optional(bool, true)
+    storage         = optional(bool, true)
+    messaging       = optional(bool, true)
+    serverless      = optional(bool, true)
     rds             = optional(bool, true)
     aurora          = optional(bool, true)
     elasticache     = optional(bool, true)
@@ -205,5 +209,15 @@ variable "features" {
   validation {
     condition     = !var.features.elasticache || var.features.rds || var.features.aurora
     error_message = "ElastiCache requires a DB subnet group; enable features.rds or features.aurora."
+  }
+
+  validation {
+    condition     = !var.features.step_functions || var.features.serverless
+    error_message = "Step Functions invokes the Lambda handler; enable features.serverless."
+  }
+
+  validation {
+    condition     = !var.features.cloudfront || var.features.storage
+    error_message = "CloudFront serves the S3 assets bucket; enable features.storage."
   }
 }
