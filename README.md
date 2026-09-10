@@ -103,7 +103,7 @@ See [examples/complete](examples/complete) and [examples/minimal](examples/minim
 
 | Service    | What Terraform Provisions                  | Console Step Required?                      |
 |------------|--------------------------------------------|---------------------------------------------|
-| EC2        | `aws_instance.web` (t4g.micro)             | None — just run `terraform apply`           |
+| EC2        | `aws_instance.web` (t4g.micro)             | Terminate once (activity needs launch **and** terminate), then re-apply |
 | RDS        | `aws_db_instance.postgres` (db.t4g.micro)  | None — just run `terraform apply`           |
 | Lambda     | `aws_lambda_function_url.handler`          | None — Function URL is the trigger          |
 | Bedrock    | `aws_bedrock_model_invocation_logging_configuration` | Enable model access + submit 1 prompt in Playground |
