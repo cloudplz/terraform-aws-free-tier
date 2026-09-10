@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-09-10
+
+### Fixed
+
+- `aurora_min_capacity` now accepts `0` and defaults to `0.0`, enabling Aurora Serverless v2 auto-pause (idle ≈ $0 compute). At the previous 0.5 minimum the cluster never paused and idled at ~$44/month. Note: pausing is silently disabled while connections are open, and resume adds a few seconds of cold-start latency
+- Removed the stale cross-feature validation that coupled `features.elasticache` to `features.rds`/`features.aurora` — ElastiCache creates its own `aws_elasticache_subnet_group` and never needed RDS. Cache-only configurations are now valid
+- Corrected legacy free-tier claims in ElastiCache comments/docs: under the new Free Plan all node types consume credits; `cache.t3.micro` is pinned as the lowest-burn default
+
 ## [1.1.0] - 2026-07-27
 
 ### Added
