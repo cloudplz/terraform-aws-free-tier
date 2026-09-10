@@ -200,7 +200,9 @@ run "reject_too_many_azs" {
 
 # ─── features (cross-field validation) ───────────────────────────────────────
 
-run "reject_elasticache_without_db" {
+# ElastiCache has its own aws_elasticache_subnet_group and must NOT require
+# RDS/Aurora. Regression guard for the removed coupling validation.
+run "elasticache_without_db_succeeds" {
   command = plan
 
   variables {
@@ -211,5 +213,8 @@ run "reject_elasticache_without_db" {
     }
   }
 
-  expect_failures = [var.features]
+  assert {
+    condition     = length(aws_elasticache_subnet_group.main) == 1
+    error_message = "ElastiCache should create its own subnet group without RDS/Aurora enabled"
+  }
 }

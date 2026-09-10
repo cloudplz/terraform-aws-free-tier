@@ -118,13 +118,13 @@ variable "rds_allocated_storage" {
 }
 
 variable "aurora_min_capacity" {
-  description = "Aurora Serverless v2 minimum ACU capacity. Must be >= 0.5 (platform minimum)."
+  description = "Aurora Serverless v2 minimum ACU capacity. 0 enables auto-pause (idle = $0 compute); >= 0.5 keeps the cluster always warm. 0.1-0.4 is not a valid Aurora range."
   type        = number
-  default     = 0.5
+  default     = 0.0
 
   validation {
-    condition     = var.aurora_min_capacity >= 0.5
-    error_message = "aurora_min_capacity must be >= 0.5 (Aurora Serverless v2 minimum)."
+    condition     = var.aurora_min_capacity == 0 || var.aurora_min_capacity >= 0.5
+    error_message = "aurora_min_capacity must be 0 (auto-pause) or >= 0.5 (always warm). 0.1-0.4 is not valid."
   }
 }
 
@@ -151,13 +151,13 @@ variable "lambda_memory_mb" {
 }
 
 variable "elasticache_node_type" {
-  description = "ElastiCache node type. Must be cache.t3.micro — the only free-plan eligible ElastiCache node type."
+  description = "ElastiCache node type. Pinned to cache.t3.micro as the cost guard: under the new Free Plan all ElastiCache nodes consume credits, and t3.micro is the cheapest x86 option. (The legacy 12-month free tier covered only cache.t3.micro; cache.t4g.micro was never included.)"
   type        = string
   default     = "cache.t3.micro"
 
   validation {
     condition     = var.elasticache_node_type == "cache.t3.micro"
-    error_message = "elasticache_node_type must be cache.t3.micro (the only free-plan eligible ElastiCache node type; cache.t4g.micro is NOT free-plan eligible)."
+    error_message = "elasticache_node_type is pinned to cache.t3.micro to keep credit burn minimal (~$12.41/mo). Override the module source if you need a larger node."
   }
 }
 
@@ -205,11 +205,6 @@ variable "features" {
     bedrock_logging = optional(bool, true)
   })
   default = {}
-
-  validation {
-    condition     = !var.features.elasticache || var.features.rds || var.features.aurora
-    error_message = "ElastiCache requires a DB subnet group; enable features.rds or features.aurora."
-  }
 
   validation {
     condition     = !var.features.step_functions || var.features.serverless
