@@ -1,0 +1,5 @@
+# gitleaks: verified false positives (test fixtures, 1Password item IDs, book examples, commit hashes)
+514b82f35568bab17219e64363a93b0b87c6ef63:tests/defaults_unit_test.tftest.hcl:hashicorp-tf-password:15
+514b82f35568bab17219e64363a93b0b87c6ef63:tests/security_unit_test.tftest.hcl:hashicorp-tf-password:15
+514b82f35568bab17219e64363a93b0b87c6ef63:tests/variables_unit_test.tftest.hcl:hashicorp-tf-password:15
+514b82f35568bab17219e64363a93b0b87c6ef63:tests/features_unit_test.tftest.hcl:hashicorp-tf-password:15
